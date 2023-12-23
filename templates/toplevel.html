@@ -1,0 +1,77 @@
+<div id="toplevel">
+    <h3>
+        {% if level != "root" %}
+            <a href="#" hx-get="/toplevel/root" hx-target="#list">root</a> -  
+        {% endif %}
+        {% for lev in level_parts %}
+            {% if loop.last %}
+                {{ lev }}        
+            {% else %}
+                <a href="#" hx-get="/toplevel/{{ level_links[loop.index0] }}" hx-target="#list">{{ lev }}</a>.
+            {% endif %}        
+        {% endfor %}
+    </h3>
+    <ul>
+        {% for node in nodes %}
+            <li>
+            {% match node.value %}
+                {% when Some with (val) %}
+                    {% match val.deprecated %}
+                        {% when Some with (deprecated) %}
+                            <s>{{ level }}.<b>{{ node.name }}</b></s>
+                        {% when None %}
+                            {{ level }}.<b>{{ node.name }}</b><br/>
+                    {% endmatch %}
+
+                    {% match val.type %}
+                        {% when Some with (_type) %}
+                            <small><i>{{ _type }}</i></small>
+                        {% when None %}
+                    {% endmatch %}
+
+                    {% match val.deprecated %}
+                        {% when Some with (deprecated) %}
+                            <small><i>{{ deprecated|markdown }}</i></small>
+                        {% when None %}
+                    {% endmatch %}                    
+
+                    {% match val.brief %}
+                        {% when Some with (brief) %}
+                            {{ brief|markdown }}
+                        {% when None %}
+                    {% endmatch %}
+
+                    {% match val.examples %}
+                        {% when Some with (examples) %}
+                            e.g.  
+                            {% match examples %}
+                            {% when Examples::SimpleType with (ex) %}
+                                <code>{{ ex }}</code>
+                            {% when Examples::ArrayType with (exs) %}
+                                {% for ex in exs %}
+                                    <code>{{ ex }}</code>
+                                    {% if !loop.last %}
+                                        ,
+                                    {% endif %}        
+                                {% endfor %}                
+                            {% endmatch %}
+                        {% when None %}
+                    {% endmatch %}
+
+                    {% match val.note %}
+                        {% when Some with (note) %}
+                            <blockquote>{{ note|markdown }}</blockquote>
+                        {% when None %}
+                    {% endmatch %}                                        
+
+                {% when None %}
+                    {% if level == "root" %}
+                        <a href="#" hx-get="/toplevel/{{ node.name }}" hx-target="#list">{{ node.name }}</a>
+                    {% else %}
+                        {{ level }}.<a href="#" hx-get="/toplevel/{{ level }}.{{ node.name }}" hx-target="#list">{{ node.name }}</a>
+                    {% endif %}
+                {% endmatch %}
+            </li>
+        {% endfor %}
+    </ul>
+</div>

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %} Index {% endblock %}
+
+{% block content %}
+<div
+    id="list"
+    hx-get="/toplevel/root"
+    hx-target="this"
+    hx-trigger="load"
+>
+    Loading...
+</div>
+{% endblock %}
