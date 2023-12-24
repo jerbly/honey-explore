@@ -10,7 +10,12 @@ anyhow = "1.0.75"
 askama = { version = "0.12.1", features = ["with-axum", "markdown"] }
 askama_axum = "0.4.0"
 axum = "0.7.2"
+chrono = { version = "0.4.31", features = ["serde"] }
+dotenv = "0.15.0"
 glob = "0.3.1"
+openssl = { version = "0.10.61", features = ["vendored"] }
+reqwest = { version = "0.11.23", features = ["json"] }
 serde = { version = "1.0.193", features = ["derive"] }
+serde_json = "1.0.108"
 serde_yaml = "0.9.27"
 tokio = { version = "1.35.0", features = ["full"] }

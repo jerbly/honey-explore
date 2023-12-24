@@ -111,6 +111,7 @@ pub struct Attribute {
     pub note: Option<String>,
     pub examples: Option<Examples>,
     pub deprecated: Option<String>,
+    pub used_by: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -1,5 +1,8 @@
 mod data;
+mod honeycomb;
 mod semconv;
+
+use std::collections::HashMap;
 
 use askama::Template;
 use askama_axum::IntoResponse;
@@ -8,8 +11,11 @@ use axum::{
     routing::get,
     Router,
 };
+use chrono::Utc;
 use data::Node;
 use semconv::{Attribute, Examples};
+
+use crate::honeycomb::HoneyComb;
 
 #[derive(Template)]
 #[template(path = "index.html")]
@@ -30,7 +36,8 @@ struct AppState {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
+    dotenv::dotenv().ok();
     // load our data
     let sc = semconv::SemanticConventions::new(&[
         "/Users/jerbly/Documents/code/public/semantic-conventions/model".to_owned(),
@@ -41,8 +48,46 @@ async fn main() {
     let mut keys: Vec<_> = sc.attribute_map.keys().collect();
     keys.sort();
 
+    // fetch all the honeycomb data and build a map of attribute name to datasets
+    let hc = HoneyComb::new();
+    let now = Utc::now();
+    let mut datasets = hc
+        .list_all_datasets()
+        .await?
+        .iter()
+        .filter_map(|d| {
+            if (now - d.last_written_at).num_days() < 60 {
+                Some(d.slug.clone())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    datasets.sort();
+
+    let mut attributes_used_by_datasets: HashMap<String, Vec<String>> = HashMap::new();
+
+    for dataset in datasets {
+        println!("fetching columns for dataset: {}", dataset);
+        let columns = hc.list_all_columns(&dataset).await?;
+        for column in columns {
+            if sc.attribute_map.contains_key(&column.key_name) {
+                let datasets = attributes_used_by_datasets
+                    .entry(column.key_name.clone())
+                    .or_insert(vec![]);
+                datasets.push(dataset.clone());
+            }
+        }
+    }
+
     for k in keys {
-        root.add_node(k, Some(sc.attribute_map[k].clone()));
+        let mut attribute = sc.attribute_map[k].clone();
+        if let Some(datasets) = attributes_used_by_datasets.get(k) {
+            let mut datasets = datasets.clone();
+            datasets.sort();
+            attribute.used_by = Some(datasets);
+        }
+        root.add_node(k, Some(attribute));
     }
     let state = AppState { db: root };
 
@@ -58,6 +103,7 @@ async fn main() {
         .unwrap();
     println!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
+    Ok(())
 }
 
 async fn handler() -> impl IntoResponse {
