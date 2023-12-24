@@ -8,6 +8,7 @@ use askama::Template;
 use askama_axum::IntoResponse;
 use axum::{
     extract::{Path, State},
+    response::Response,
     routing::get,
     Router,
 };
@@ -33,6 +34,7 @@ struct TopLevelTemplate {
 #[derive(Clone)]
 struct AppState {
     db: Node<Attribute>,
+    hc: HoneyComb,
 }
 
 #[tokio::main]
@@ -89,12 +91,13 @@ async fn main() -> anyhow::Result<()> {
         }
         root.add_node(k, Some(attribute));
     }
-    let state = AppState { db: root };
+    let state = AppState { db: root, hc };
 
     // build our application with a route
     let app = Router::new()
         .route("/", get(handler))
         .route("/toplevel/:name", get(toplevel_handler))
+        .route("/hnyexists/:dataset/:column", get(honeycomb_exists_handler))
         .with_state(state);
 
     // run it
@@ -123,6 +126,18 @@ fn get_links(names: &Vec<String>) -> Vec<String> {
         links.push(prev.clone());
     }
     links
+}
+
+async fn honeycomb_exists_handler(
+    State(state): State<AppState>,
+    Path((dataset, column)): Path<(String, String)>,
+) -> Response {
+    let exists = state.hc.get_exists_query_url(&dataset, &column).await;
+    if let Ok(url) = exists {
+        println!("redirecting to: {}", url);
+        return ([("HX-Redirect", url)], "").into_response();
+    }
+    "".into_response()
 }
 
 async fn toplevel_handler(

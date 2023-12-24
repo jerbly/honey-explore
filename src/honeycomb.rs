@@ -3,6 +3,7 @@ use std::env;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone)]
 pub struct HoneyComb {
     pub api_key: String,
 }
@@ -23,6 +24,21 @@ pub struct Column {
     pub description: String,
     pub hidden: bool,
     pub last_written: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+struct QueryResultLinks {
+    query_url: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct QueryResult {
+    links: QueryResultLinks,
+}
+
+#[derive(Debug, Deserialize)]
+struct Query {
+    id: String,
 }
 
 impl HoneyComb {
@@ -51,5 +67,48 @@ impl HoneyComb {
             .json::<Vec<Column>>()
             .await?;
         Ok(response)
+    }
+
+    pub async fn get_exists_query_url(
+        &self,
+        dataset_slug: &str,
+        column_id: &str,
+    ) -> anyhow::Result<String> {
+        let response = reqwest::Client::new()
+            .post(format!("{}queries/{}", URL, dataset_slug))
+            .header("X-Honeycomb-Team", &self.api_key)
+            .json(&serde_json::json!({
+                "calculations": [{
+                    "op": "COUNT"
+                  }],
+                "filters": [
+                    {
+                        "column": column_id,
+                        "op": "exists",
+                    }
+                ],
+                "time_range": 7200
+            }))
+            .send()
+            .await?
+            .json::<Query>()
+            .await?;
+
+        let query_id = response.id;
+
+        let response = reqwest::Client::new()
+            .post(format!("{}query_results/{}", URL, dataset_slug))
+            .header("X-Honeycomb-Team", &self.api_key)
+            .json(&serde_json::json!({
+              "query_id": query_id,
+              "disable_series": false,
+              "limit": 10000
+            }))
+            .send()
+            .await?
+            .json::<QueryResult>()
+            .await?;
+
+        Ok(response.links.query_url)
     }
 }

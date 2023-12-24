@@ -66,7 +66,14 @@
 
                     {% match val.used_by %}
                         {% when Some with (datasets) %}
-                            <p><b>used by</b>: <i>{{ datasets|join(", ") }}</i></p>
+                            <p><b>used by</b>: 
+                                {% for d in datasets %}
+                                    <a href="#" hx-get="/hnyexists/{{ d }}/{{ level }}.{{ node.name }}" hx-swap="none">{{ d }}</a>
+                                    {% if !loop.last %}
+                                        ,
+                                    {% endif %}        
+                                {% endfor %}                
+                            </p>
                         {% when None %}
                     {% endmatch %}
 
