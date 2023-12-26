@@ -113,7 +113,6 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn handler() -> impl IntoResponse {
-    println!("\n\nindex");
     IndexTemplate {
         node: "root".to_owned(),
     }
@@ -151,11 +150,6 @@ async fn node_handler(
     Path(name): Path<String>,
     headers: HeaderMap,
 ) -> Response {
-    println!("\n\nNode: {}", name);
-    // print all the headers:
-    for (key, value) in headers.iter() {
-        println!("{}: {:?}", key, value);
-    }
     // check headers to see if this is a full page request or an ajax request
     let hx_history_restore_request = headers
         .get("HX-History-Restore-Request")
