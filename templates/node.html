@@ -1,13 +1,13 @@
-<div id="toplevel">
+<div id="list">
     <h3>
         {% if level != "root" %}
-            <a href="#" hx-get="/toplevel/root" hx-target="#list">root</a> -  
+            <a href="#" hx-get="/node/root" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">root</a> -  
         {% endif %}
         {% for lev in level_parts %}
             {% if loop.last %}
                 {{ lev }}        
             {% else %}
-                <a href="#" hx-get="/toplevel/{{ level_links[loop.index0] }}" hx-target="#list">{{ lev }}</a>.
+                <a href="#" hx-get="/node/{{ level_links[loop.index0] }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ lev }}</a>.
             {% endif %}        
         {% endfor %}
     </h3>
@@ -79,9 +79,9 @@
 
                 {% when None %}
                     {% if level == "root" %}
-                        <a href="#" hx-get="/toplevel/{{ node.name }}" hx-target="#list">{{ node.name }}</a>
+                        <a href="#" hx-get="/node/{{ node.name }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
                     {% else %}
-                        {{ level }}.<a href="#" hx-get="/toplevel/{{ level }}.{{ node.name }}" hx-target="#list">{{ node.name }}</a>
+                        {{ level }}.<a href="#" hx-get="/node/{{ level }}.{{ node.name }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
                     {% endif %}
                 {% endmatch %}
             </li>

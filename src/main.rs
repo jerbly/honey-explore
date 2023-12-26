@@ -8,6 +8,7 @@ use askama::Template;
 use askama_axum::IntoResponse;
 use axum::{
     extract::{Path, State},
+    http::header::HeaderMap,
     response::Response,
     routing::get,
     Router,
@@ -20,11 +21,13 @@ use crate::honeycomb::HoneyComb;
 
 #[derive(Template)]
 #[template(path = "index.html")]
-struct IndexTemplate {}
+struct IndexTemplate {
+    node: String,
+}
 
 #[derive(Template)]
-#[template(path = "toplevel.html")]
-struct TopLevelTemplate {
+#[template(path = "node.html")]
+struct NodeTemplate {
     level: String,
     level_parts: Vec<String>,
     level_links: Vec<String>,
@@ -96,7 +99,7 @@ async fn main() -> anyhow::Result<()> {
     // build our application with a route
     let app = Router::new()
         .route("/", get(handler))
-        .route("/toplevel/:name", get(toplevel_handler))
+        .route("/node/:name", get(node_handler))
         .route("/hnyexists/:dataset/:column", get(honeycomb_exists_handler))
         .with_state(state);
 
@@ -110,7 +113,10 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn handler() -> impl IntoResponse {
-    IndexTemplate {}
+    println!("\n\nindex");
+    IndexTemplate {
+        node: "root".to_owned(),
+    }
 }
 
 fn get_links(names: &Vec<String>) -> Vec<String> {
@@ -140,12 +146,30 @@ async fn honeycomb_exists_handler(
     "".into_response()
 }
 
-async fn toplevel_handler(
+async fn node_handler(
     State(state): State<AppState>,
     Path(name): Path<String>,
-) -> impl IntoResponse {
+    headers: HeaderMap,
+) -> Response {
+    println!("\n\nNode: {}", name);
+    // print all the headers:
+    for (key, value) in headers.iter() {
+        println!("{}: {:?}", key, value);
+    }
+    // check headers to see if this is a full page request or an ajax request
+    let hx_history_restore_request = headers
+        .get("HX-History-Restore-Request")
+        .and_then(|value| value.to_str().ok())
+        .map(|s| s == "true")
+        .unwrap_or(false);
+
+    if hx_history_restore_request || !headers.contains_key("HX-Request") {
+        // Handle the case where HX-History-Restore-Request is true
+        return IndexTemplate { node: name }.into_response();
+    }
+
     if name == "root" {
-        return TopLevelTemplate {
+        return NodeTemplate {
             level: name.clone(),
             level_parts: vec![name.clone()],
             level_links: vec![name.clone()],
@@ -155,14 +179,15 @@ async fn toplevel_handler(
                 .values()
                 .cloned()
                 .collect::<Vec<Node<Attribute>>>(),
-        };
+        }
+        .into_response();
     }
     if name.starts_with("root.") {
         let name = name.trim_start_matches("root.");
         if let Some(node) = state.db.get_node(name) {
             let level_parts = name.split('.').map(|s| s.to_owned()).collect();
             let level_links = get_links(&level_parts);
-            return TopLevelTemplate {
+            return NodeTemplate {
                 level: name.to_owned(),
                 level_parts,
                 level_links,
@@ -171,13 +196,14 @@ async fn toplevel_handler(
                     .values()
                     .cloned()
                     .collect::<Vec<Node<Attribute>>>(),
-            };
+            }
+            .into_response();
         }
     }
     let level_parts = name.split('.').map(|s| s.to_owned()).collect();
     let level_links = get_links(&level_parts);
     if let Some(node) = state.db.get_node(&name) {
-        TopLevelTemplate {
+        NodeTemplate {
             level: name.clone(),
             level_parts,
             level_links,
@@ -187,12 +213,14 @@ async fn toplevel_handler(
                 .cloned()
                 .collect::<Vec<Node<Attribute>>>(),
         }
+        .into_response()
     } else {
-        TopLevelTemplate {
+        NodeTemplate {
             level: name.clone(),
             level_parts,
             level_links,
             nodes: vec![],
         }
+        .into_response()
     }
 }
