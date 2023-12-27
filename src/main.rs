@@ -37,7 +37,7 @@ struct NodeTemplate {
 #[derive(Clone)]
 struct AppState {
     db: Node<Attribute>,
-    hc: HoneyComb,
+    hc: Option<HoneyComb>,
 }
 
 #[tokio::main]
@@ -45,8 +45,14 @@ async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().ok();
     // load our data
     let sc = semconv::SemanticConventions::new(&[
-        "/Users/jerbly/Documents/code/public/semantic-conventions/model".to_owned(),
-        "/Users/jerbly/Documents/code/eio-otel-semantic-conventions/model".to_owned(),
+        (
+            "otel".to_owned(),
+            "/Users/jerbly/Documents/code/public/semantic-conventions/model".to_owned(),
+        ),
+        (
+            "eio".to_owned(),
+            "/Users/jerbly/Documents/code/eio-otel-semantic-conventions/model".to_owned(),
+        ),
     ])
     .unwrap();
     let mut root = Node::new("root".to_string(), None);
@@ -54,45 +60,58 @@ async fn main() -> anyhow::Result<()> {
     keys.sort();
 
     // fetch all the honeycomb data and build a map of attribute name to datasets
-    let hc = HoneyComb::new();
-    let now = Utc::now();
-    let mut datasets = hc
-        .list_all_datasets()
-        .await?
-        .iter()
-        .filter_map(|d| {
-            if (now - d.last_written_at).num_days() < 60 {
-                Some(d.slug.clone())
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-    datasets.sort();
+    let hc = match HoneyComb::new() {
+        Ok(hc) => Some(hc),
+        Err(e) => {
+            println!("continuing without honeycomb: {}", e);
+            None
+        }
+    };
 
-    let mut attributes_used_by_datasets: HashMap<String, Vec<String>> = HashMap::new();
+    if let Some(hc) = &hc {
+        let now = Utc::now();
+        let mut datasets = hc
+            .list_all_datasets()
+            .await?
+            .iter()
+            .filter_map(|d| {
+                if (now - d.last_written_at).num_days() < 60 {
+                    Some(d.slug.clone())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        datasets.sort();
 
-    for dataset in datasets {
-        println!("fetching columns for dataset: {}", dataset);
-        let columns = hc.list_all_columns(&dataset).await?;
-        for column in columns {
-            if sc.attribute_map.contains_key(&column.key_name) {
-                let datasets = attributes_used_by_datasets
-                    .entry(column.key_name.clone())
-                    .or_insert(vec![]);
-                datasets.push(dataset.clone());
+        let mut attributes_used_by_datasets: HashMap<String, Vec<String>> = HashMap::new();
+
+        for dataset in datasets {
+            println!("fetching columns for dataset: {}", dataset);
+            let columns = hc.list_all_columns(&dataset).await?;
+            for column in columns {
+                if sc.attribute_map.contains_key(&column.key_name) {
+                    let datasets = attributes_used_by_datasets
+                        .entry(column.key_name.clone())
+                        .or_insert(vec![]);
+                    datasets.push(dataset.clone());
+                }
             }
         }
-    }
 
-    for k in keys {
-        let mut attribute = sc.attribute_map[k].clone();
-        if let Some(datasets) = attributes_used_by_datasets.get(k) {
-            let mut datasets = datasets.clone();
-            datasets.sort();
-            attribute.used_by = Some(datasets);
+        for k in keys {
+            let mut attribute = sc.attribute_map[k].clone();
+            if let Some(datasets) = attributes_used_by_datasets.get(k) {
+                let mut datasets = datasets.clone();
+                datasets.sort();
+                attribute.used_by = Some(datasets);
+            }
+            root.add_node(k, Some(attribute));
         }
-        root.add_node(k, Some(attribute));
+    } else {
+        for k in keys {
+            root.add_node(k, Some(sc.attribute_map[k].clone()));
+        }
     }
     let state = AppState { db: root, hc };
 
@@ -137,12 +156,16 @@ async fn honeycomb_exists_handler(
     State(state): State<AppState>,
     Path((dataset, column)): Path<(String, String)>,
 ) -> Response {
-    let exists = state.hc.get_exists_query_url(&dataset, &column).await;
-    if let Ok(url) = exists {
-        println!("redirecting to: {}", url);
-        return ([("HX-Redirect", url)], "").into_response();
+    match &state.hc {
+        None => "".into_response(),
+        Some(hc) => {
+            if let Ok(exists) = hc.get_exists_query_url(&dataset, &column).await {
+                ([("HX-Redirect", exists)], "").into_response()
+            } else {
+                "".into_response()
+            }
+        }
     }
-    "".into_response()
 }
 
 async fn node_handler(

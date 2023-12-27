@@ -20,7 +20,13 @@
                         {% when Some with (deprecated) %}
                             <s>{{ level }}.<b>{{ node.name }}</b></s>
                         {% when None %}
-                            {{ level }}.<b>{{ node.name }}</b><br/>
+                            <mark>{{ level }}.<b>{{ node.name }}</b></mark>
+                    {% endmatch %}
+
+                    {% match val.defined_in %}
+                        {% when Some with (defined_in) %}
+                            (<small>{{ defined_in }}</small>)<br/>
+                        {% when None %}
                     {% endmatch %}
 
                     {% match val.type %}

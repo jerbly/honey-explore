@@ -1,5 +1,6 @@
 use std::env;
 
+use anyhow::Context;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -42,11 +43,13 @@ struct Query {
 }
 
 impl HoneyComb {
-    pub fn new() -> Self {
-        Self {
-            api_key: env::var(HONEYCOMB_API_KEY)
-                .unwrap_or_else(|_| panic!("Environment variable {} not found", HONEYCOMB_API_KEY)),
-        }
+    pub fn new() -> anyhow::Result<Self> {
+        Ok(Self {
+            api_key: env::var(HONEYCOMB_API_KEY).context(format!(
+                "Environment variable {} not found",
+                HONEYCOMB_API_KEY
+            ))?,
+        })
     }
     pub async fn list_all_datasets(&self) -> anyhow::Result<Vec<Dataset>> {
         let response = reqwest::Client::new()

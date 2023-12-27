@@ -112,6 +112,7 @@ pub struct Attribute {
     pub examples: Option<Examples>,
     pub deprecated: Option<String>,
     pub used_by: Option<Vec<String>>,
+    pub defined_in: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -131,28 +132,36 @@ pub struct SemanticConventions {
 }
 
 impl SemanticConventions {
-    pub fn new(root_dirs: &[String]) -> anyhow::Result<Self> {
+    pub fn new(root_dirs: &[(String, String)]) -> anyhow::Result<Self> {
         let mut sc = SemanticConventions {
             attribute_map: HashMap::new(),
         };
-        for root_dir in root_dirs {
+        for (nick_name, root_dir) in root_dirs {
             let yml = format!("{root_dir}/**/*.yml");
             let yaml = format!("{root_dir}/**/*.yaml");
             for entry in glob(yml.as_str())?.chain(glob(yaml.as_str())?) {
-                sc.read_file(entry?)?;
+                let entry = entry?;
+                // print the trailing part of the path after the root_dir
+                let defined_in = format!(
+                    "{}:{}",
+                    nick_name,
+                    &entry.strip_prefix(root_dir)?.to_str().unwrap_or("")
+                );
+                sc.read_file(entry, defined_in)?;
             }
         }
         Ok(sc)
     }
 
-    pub fn read_file(&mut self, path: PathBuf) -> anyhow::Result<()> {
+    pub fn read_file(&mut self, path: PathBuf, defined_in: String) -> anyhow::Result<()> {
         println!("reading file: {:?}", path);
         let groups: Groups = serde_yaml::from_reader(&File::open(path)?)?;
         for group in groups.groups {
             if let Some(attributes) = group.attributes {
-                for attribute in attributes {
+                for mut attribute in attributes {
                     let is_some = attribute.id.is_some();
                     if is_some {
+                        attribute.defined_in = Some(defined_in.clone());
                         self.attribute_map.insert(
                             match &group.prefix {
                                 Some(prefix) => {
