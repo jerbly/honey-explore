@@ -143,7 +143,7 @@ impl SemanticConventions {
                 let entry = entry?;
                 // print the trailing part of the path after the root_dir
                 let defined_in = format!(
-                    "{}:{}",
+                    "{}::{}",
                     nick_name,
                     &entry.strip_prefix(root_dir)?.to_str().unwrap_or("")
                 );

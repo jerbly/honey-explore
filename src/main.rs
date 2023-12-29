@@ -2,8 +2,9 @@ mod data;
 mod honeycomb;
 mod semconv;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path};
 
+use anyhow::Context;
 use askama::Template;
 use askama_axum::IntoResponse;
 use axum::{
@@ -14,6 +15,7 @@ use axum::{
     Router,
 };
 use chrono::Utc;
+use clap::Parser;
 use data::Node;
 use semconv::{Attribute, Examples};
 
@@ -40,21 +42,47 @@ struct AppState {
     hc: Option<HoneyComb>,
 }
 
+#[derive(Parser, Debug)]
+#[command(author, version)]
+/// Honey Explore
+///
+/// Explore OpenTelemetry Semantic Convention compatible models in a web browser.
+struct Args {
+    /// Model paths
+    ///
+    /// Provide one or more paths to the root of semantic convention
+    /// model directories. The path should be prefixed with a nickname
+    /// followed by a double colon. For example:
+    ///    otel::/Users/jerbly/Documents/code/public/semantic-conventions/model
+    #[arg(short, long, required = true, num_args(1..))]
+    model: Vec<String>,
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv::dotenv().ok();
-    // load our data
-    let sc = semconv::SemanticConventions::new(&[
-        (
-            "otel".to_owned(),
-            "/Users/jerbly/Documents/code/public/semantic-conventions/model".to_owned(),
-        ),
-        (
-            "eio".to_owned(),
-            "/Users/jerbly/Documents/code/eio-otel-semantic-conventions/model".to_owned(),
-        ),
-    ])
-    .unwrap();
+    let args = Args::parse();
+    let mut root_dirs = vec![];
+    for path in args.model {
+        if !path.contains("::") {
+            anyhow::bail!("path must be prefixed with a nickname followed by a double colon");
+        }
+        let split = path.split("::").collect::<Vec<_>>();
+        let nickname = split[0];
+        let p = path::Path::new(&split[1]);
+        if !p.is_dir() {
+            anyhow::bail!("{} is not directory", path);
+        }
+        root_dirs.push((
+            nickname.to_owned(),
+            p.canonicalize()?
+                .to_str()
+                .context("invalid path")?
+                .to_owned(),
+        ));
+    }
+
+    let sc = semconv::SemanticConventions::new(&root_dirs)?;
     let mut root = Node::new("root".to_string(), None);
     let mut keys: Vec<_> = sc.attribute_map.keys().collect();
     keys.sort();
