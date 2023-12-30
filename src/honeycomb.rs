@@ -81,6 +81,9 @@ impl HoneyComb {
             .post(format!("{}queries/{}", URL, dataset_slug))
             .header("X-Honeycomb-Team", &self.api_key)
             .json(&serde_json::json!({
+                "breakdowns": [
+                    column_id
+                ],
                 "calculations": [{
                     "op": "COUNT"
                   }],

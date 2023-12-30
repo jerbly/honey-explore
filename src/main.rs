@@ -17,9 +17,8 @@ use axum::{
 use chrono::Utc;
 use clap::Parser;
 use data::Node;
+use honeycomb::HoneyComb;
 use semconv::{Attribute, Examples};
-
-use crate::honeycomb::HoneyComb;
 
 #[derive(Template)]
 #[template(path = "index.html")]
@@ -34,6 +33,13 @@ struct NodeTemplate {
     level_parts: Vec<String>,
     level_links: Vec<String>,
     nodes: Vec<Node<Attribute>>,
+}
+
+#[derive(Template)]
+#[template(path = "usedby.html")]
+struct UsedByTemplate {
+    attribute: String,
+    datasets: Vec<String>,
 }
 
 #[derive(Clone)]
@@ -56,10 +62,17 @@ struct Args {
     ///    otel::/Users/jerbly/Documents/code/public/semantic-conventions/model
     #[arg(short, long, required = true, num_args(1..))]
     model: Vec<String>,
+
+    /// Address
+    ///
+    /// TCP Address to listen on.
+    #[arg(short, long, default_value_t = String::from("127.0.0.1:3000"))]
+    addr: String,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // load configuration
     dotenv::dotenv().ok();
     let args = Args::parse();
     let mut root_dirs = vec![];
@@ -147,21 +160,38 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/", get(handler))
         .route("/node/:name", get(node_handler))
+        .route("/usedby/:name", get(used_by_handler))
         .route("/hnyexists/:dataset/:column", get(honeycomb_exists_handler))
         .with_state(state);
 
     // run it
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
-        .await
-        .unwrap();
-    println!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(args.addr).await?;
+    println!("listening on {}", listener.local_addr()?);
+    axum::serve(listener, app).await?;
     Ok(())
 }
 
 async fn handler() -> impl IntoResponse {
     IndexTemplate {
         node: "root".to_owned(),
+    }
+}
+
+async fn used_by_handler(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> impl IntoResponse {
+    let mut datasets = vec![];
+    if let Some(node) = state.db.get_node(&name) {
+        if let Some(attribute) = &node.value {
+            if let Some(used_by) = &attribute.used_by {
+                datasets.extend_from_slice(used_by);
+            }
+        }
+    }
+    UsedByTemplate {
+        attribute: name,
+        datasets,
     }
 }
 

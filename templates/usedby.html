@@ -1,0 +1,6 @@
+{% for d in datasets %}
+    <a href="#" hx-get="/hnyexists/{{ d }}/{{ attribute }}" hx-swap="none">{{ d }}</a>
+    {% if !loop.last %}
+        ,
+    {% endif %}        
+{% endfor %}                

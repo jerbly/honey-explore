@@ -16,12 +16,21 @@
             <li>
             {% match node.value %}
                 {% when Some with (val) %}
-                    {% match val.deprecated %}
-                        {% when Some with (deprecated) %}
-                            <s>{{ level }}.<b>{{ node.name }}</b></s>
-                        {% when None %}
-                            <mark>{{ level }}.<b>{{ node.name }}</b></mark>
-                    {% endmatch %}
+                    {% if level == "root" %}
+                        {% match val.deprecated %}
+                            {% when Some with (deprecated) %}
+                                <s><b>{{ node.name }}</b></s>
+                            {% when None %}
+                                <mark><b>{{ node.name }}</b></mark>
+                        {% endmatch %}
+                    {% else %}
+                        {% match val.deprecated %}
+                            {% when Some with (deprecated) %}
+                                <s>{{ level }}.<b>{{ node.name }}</b></s>
+                            {% when None %}
+                                <mark>{{ level }}.<b>{{ node.name }}</b></mark>
+                        {% endmatch %}
+                    {% endif %}
 
                     {% match val.defined_in %}
                         {% when Some with (defined_in) %}
@@ -72,14 +81,18 @@
 
                     {% match val.used_by %}
                         {% when Some with (datasets) %}
-                            <p><b>used by</b>: 
+                            {% if datasets.len() < 10 %}
+                            <p><small><b>used by</b>: 
                                 {% for d in datasets %}
                                     <a href="#" hx-get="/hnyexists/{{ d }}/{{ level }}.{{ node.name }}" hx-swap="none">{{ d }}</a>
                                     {% if !loop.last %}
                                         ,
                                     {% endif %}        
                                 {% endfor %}                
-                            </p>
+                            </small></p>
+                            {% else %}
+                                <p><small><b>used by</b>: <a href="#" hx-get="/usedby/{{ level }}.{{ node.name }}" hx-swap="outerHTML">10+ datasets</a></small></p>
+                            {% endif %}
                         {% when None %}
                     {% endmatch %}
 
