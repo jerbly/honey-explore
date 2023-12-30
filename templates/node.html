@@ -13,6 +13,7 @@
     </h3>
     <ul>
         {% for node in nodes %}
+            {% let attribute = level.clone() + "." + node.name.as_str() %} 
             <li>
             {% match node.value %}
                 {% when Some with (val) %}
@@ -82,16 +83,11 @@
                     {% match val.used_by %}
                         {% when Some with (datasets) %}
                             {% if datasets.len() < 10 %}
-                            <p><small><b>used by</b>: 
-                                {% for d in datasets %}
-                                    <a href="#" hx-get="/hnyexists/{{ d }}/{{ level }}.{{ node.name }}" hx-swap="none">{{ d }}</a>
-                                    {% if !loop.last %}
-                                        ,
-                                    {% endif %}        
-                                {% endfor %}                
+                            <p><small><b>used by</b>:
+                                {% include "usedby.html" %}                
                             </small></p>
                             {% else %}
-                                <p><small><b>used by</b>: <a href="#" hx-get="/usedby/{{ level }}.{{ node.name }}" hx-swap="outerHTML">10+ datasets</a></small></p>
+                                <p><small><b>used by</b>: <a href="#" hx-get="/usedby/{{ attribute }}" hx-swap="outerHTML">10+ datasets</a></small></p>
                             {% endif %}
                         {% when None %}
                     {% endmatch %}
@@ -100,7 +96,7 @@
                     {% if level == "root" %}
                         <a href="#" hx-get="/node/{{ node.name }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
                     {% else %}
-                        {{ level }}.<a href="#" hx-get="/node/{{ level }}.{{ node.name }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
+                        {{ level }}.<a href="#" hx-get="/node/{{ attribute }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
                     {% endif %}
                 {% endmatch %}
             </li>
