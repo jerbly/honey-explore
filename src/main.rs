@@ -2,7 +2,7 @@ mod data;
 mod honeycomb;
 mod semconv;
 
-use std::{collections::HashMap, path};
+use std::{collections::HashMap, path, time::Instant};
 
 use anyhow::Context;
 use askama::Template;
@@ -95,15 +95,17 @@ async fn main() -> anyhow::Result<()> {
                 .to_owned(),
         ));
     }
-
+    // load semantic conventions
     let sc = SemanticConventions::new(&root_dirs)?;
-    let mut root = Node::new("root".to_string(), None);
     let mut keys: Vec<_> = sc.attribute_map.keys().collect();
     keys.sort();
 
-    // fetch all the honeycomb data and build a map of attribute name to datasets
+    // build the tree
+    let mut root = Node::new("root".to_string(), None);
     let hc = get_honeycomb().await?;
     if let Some(hc) = &hc {
+        // if we have a valid api-key with enough access permission then
+        // fetch all the honeycomb data and build a map of attribute name to datasets
         let attributes_used_by_datasets = get_attributes_used_by_datasets(hc, &sc).await?;
         for k in keys {
             let mut attribute = sc.attribute_map[k].clone();
@@ -115,10 +117,12 @@ async fn main() -> anyhow::Result<()> {
             root.add_node(k, Some(attribute));
         }
     } else {
+        // otherwise just build the tree with no honeycomb data
         for k in keys {
             root.add_node(k, Some(sc.attribute_map[k].clone()));
         }
     }
+
     let state = AppState { db: root, hc };
 
     // build our application with a route
@@ -157,6 +161,9 @@ async fn get_attributes_used_by_datasets(
 
     let mut attributes_used_by_datasets: HashMap<String, Vec<String>> = HashMap::new();
 
+    let start = Instant::now();
+    println!("fetching columns for {} datasets", datasets.len());
+
     let mut tasks = FuturesUnordered::new();
 
     for dataset in datasets {
@@ -178,8 +185,9 @@ async fn get_attributes_used_by_datasets(
     }
 
     while let Some((dataset, columns)) = tasks.next().await {
-        println!("mapping columns for dataset: {}", dataset);
         for column in columns {
+            // TODO handle template types here with a template_types map in SemanticConventions
+            // Will also need a change to the honeycomb query in this case
             if sc.attribute_map.contains_key(&column.key_name) {
                 let datasets = attributes_used_by_datasets
                     .entry(column.key_name.clone())
@@ -189,8 +197,8 @@ async fn get_attributes_used_by_datasets(
         }
     }
 
+    // synchronous version ~23x slower
     // for dataset in datasets {
-    //     println!("fetching columns for dataset: {}", dataset);
     //     let columns = hc.list_all_columns(&dataset).await?;
     //     for column in columns {
     //         if sc.attribute_map.contains_key(&column.key_name) {
@@ -201,6 +209,8 @@ async fn get_attributes_used_by_datasets(
     //         }
     //     }
     // }
+    let duration = start.elapsed();
+    println!("fetched and mapped all datasets in {:?}", duration);
 
     Ok(attributes_used_by_datasets)
 }
