@@ -102,9 +102,21 @@ async fn main() -> anyhow::Result<()> {
 
     // fetch all the honeycomb data and build a map of attribute name to datasets
     let hc = match HoneyComb::new() {
-        Ok(hc) => Some(hc),
+        Ok(hc) => {
+            let auth = hc.list_authorizations().await?;
+            let required_access = ["columns", "createDatasets", "queries"];
+            if auth.has_required_access(&required_access) {
+                Some(hc)
+            } else {
+                eprintln!(
+                    "continuing without honeycomb: missing required access {:?}:\n{}",
+                    required_access, auth
+                );
+                None
+            }
+        }
         Err(e) => {
-            println!("continuing without honeycomb: {}", e);
+            eprintln!("continuing without honeycomb: {}", e);
             None
         }
     };
@@ -116,7 +128,7 @@ async fn main() -> anyhow::Result<()> {
             .await?
             .iter()
             .filter_map(|d| {
-                if (now - d.last_written_at).num_days() < 60 {
+                if (now - d.last_written_at.unwrap_or(now)).num_days() < 60 {
                     Some(d.slug.clone())
                 } else {
                     None
