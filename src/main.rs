@@ -1,8 +1,7 @@
 mod data;
-mod honeycomb;
 mod semconv;
 
-use std::{collections::HashMap, path, time::Instant};
+use std::{collections::HashMap, path};
 
 use anyhow::Context;
 use askama::Template;
@@ -14,11 +13,9 @@ use axum::{
     routing::get,
     Router,
 };
-use chrono::Utc;
 use clap::Parser;
 use data::Node;
-use futures::stream::{FuturesUnordered, StreamExt};
-use honeycomb::HoneyComb;
+use honeycomb_client::honeycomb::HoneyComb;
 use semconv::{Attribute, Examples, SemanticConventions};
 
 #[derive(Template)]
@@ -102,17 +99,22 @@ async fn main() -> anyhow::Result<()> {
 
     // build the tree
     let mut root = Node::new("root".to_string(), None);
-    let hc = get_honeycomb().await?;
-    if let Some(hc) = &hc {
+    let hc = match honeycomb_client::get_honeycomb(&["columns", "createDatasets", "queries"]).await
+    {
+        Ok(hclient) => hclient,
+        Err(e) => {
+            eprintln!("Failed to get honeycomb client: {}", e);
+            None
+        }
+    };
+    if let Some(client) = &hc {
         // if we have a valid api-key with enough access permission then
         // fetch all the honeycomb data and build a map of attribute name to datasets
-        let attributes_used_by_datasets = get_attributes_used_by_datasets(hc, &sc).await?;
+        let attributes_used_by_datasets = get_attributes_used_by_datasets(client, &sc).await?;
         for k in keys {
             let mut attribute = sc.attribute_map[k].clone();
             if let Some(datasets) = attributes_used_by_datasets.get(k) {
-                let mut datasets = datasets.clone();
-                datasets.sort();
-                attribute.used_by = Some(datasets);
+                attribute.used_by = Some(datasets.clone());
             }
             root.add_node(k, Some(attribute));
         }
@@ -144,50 +146,15 @@ async fn get_attributes_used_by_datasets(
     hc: &HoneyComb,
     sc: &SemanticConventions,
 ) -> anyhow::Result<HashMap<String, Vec<String>>> {
-    let now = Utc::now();
-    let mut datasets = hc
-        .list_all_datasets()
-        .await?
-        .iter()
-        .filter_map(|d| {
-            if (now - d.last_written_at.unwrap_or(now)).num_days() < 60 {
-                Some(d.slug.clone())
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-    datasets.sort();
-
+    let dataset_slugs = hc.get_dataset_slugs(30, None).await?;
     let mut attributes_used_by_datasets: HashMap<String, Vec<String>> = HashMap::new();
-
-    let start = Instant::now();
-    println!("fetching columns for {} datasets", datasets.len());
-
-    let mut tasks = FuturesUnordered::new();
-
-    for dataset in datasets {
-        let dataset_clone = dataset.clone();
-        let hc_clone = hc.clone();
-        tasks.push(async move {
-            let columns = hc_clone.list_all_columns(&dataset_clone).await;
-            match columns {
-                Ok(columns) => (dataset_clone, columns),
-                Err(e) => {
-                    eprintln!(
-                        "error fetching columns for dataset {}: {}",
-                        dataset_clone, e
-                    );
-                    (dataset_clone, vec![])
-                }
-            }
-        });
-    }
-
-    while let Some((dataset, columns)) = tasks.next().await {
+    eprint!("Reading {} datasets ", dataset_slugs.len());
+    hc.process_datasets_columns(30, &dataset_slugs, |dataset, columns| {
+        eprint!(".");
         for column in columns {
             // TODO handle template types here with a template_types map in SemanticConventions
-            // Will also need a change to the honeycomb query in this case
+            //      Will also need a change to the honeycomb query in this case
+            //      and add <key> to the end of the attribute name in the UI
             if sc.attribute_map.contains_key(&column.key_name) {
                 let datasets = attributes_used_by_datasets
                     .entry(column.key_name.clone())
@@ -195,47 +162,10 @@ async fn get_attributes_used_by_datasets(
                 datasets.push(dataset.clone());
             }
         }
-    }
-
-    // synchronous version ~23x slower
-    // for dataset in datasets {
-    //     let columns = hc.list_all_columns(&dataset).await?;
-    //     for column in columns {
-    //         if sc.attribute_map.contains_key(&column.key_name) {
-    //             let datasets = attributes_used_by_datasets
-    //                 .entry(column.key_name.clone())
-    //                 .or_insert(vec![]);
-    //             datasets.push(dataset.clone());
-    //         }
-    //     }
-    // }
-    let duration = start.elapsed();
-    println!("fetched and mapped all datasets in {:?}", duration);
-
+    })
+    .await?;
+    eprintln!();
     Ok(attributes_used_by_datasets)
-}
-
-async fn get_honeycomb() -> anyhow::Result<Option<HoneyComb>> {
-    let hc = match HoneyComb::new() {
-        Ok(hc) => {
-            let auth = hc.list_authorizations().await?;
-            let required_access = ["columns", "createDatasets", "queries"];
-            if auth.has_required_access(&required_access) {
-                Some(hc)
-            } else {
-                eprintln!(
-                    "continuing without honeycomb: missing required access {:?}:\n{}",
-                    required_access, auth
-                );
-                None
-            }
-        }
-        Err(e) => {
-            eprintln!("continuing without honeycomb: {}", e);
-            None
-        }
-    };
-    Ok(hc)
 }
 
 async fn handler() -> impl IntoResponse {
@@ -260,21 +190,6 @@ async fn used_by_handler(
         attribute: name,
         datasets,
     }
-}
-
-fn get_links(names: &Vec<String>) -> Vec<String> {
-    // progressively join each name part to the previous
-    let mut links = vec![];
-    let mut prev = String::new();
-    for name in names {
-        if prev.is_empty() {
-            prev = name.clone();
-        } else {
-            prev = format!("{}.{}", prev, name);
-        }
-        links.push(prev.clone());
-    }
-    links
 }
 
 async fn honeycomb_exists_handler(
@@ -366,3 +281,20 @@ async fn node_handler(
         .into_response()
     }
 }
+
+fn get_links(names: &Vec<String>) -> Vec<String> {
+    // progressively join each name part to the previous
+    let mut links = vec![];
+    let mut prev = String::new();
+    for name in names {
+        if prev.is_empty() {
+            prev = name.clone();
+        } else {
+            prev = format!("{}.{}", prev, name);
+        }
+        links.push(prev.clone());
+    }
+    links
+}
+
+// TODO add favicon
