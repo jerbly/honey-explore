@@ -158,7 +158,7 @@ async fn get_attributes_used_by_datasets(
             if sc.attribute_map.contains_key(&column.key_name) {
                 let datasets = attributes_used_by_datasets
                     .entry(column.key_name.clone())
-                    .or_insert(vec![]);
+                    .or_default();
                 datasets.push(dataset.clone());
             }
         }
