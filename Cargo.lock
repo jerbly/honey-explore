@@ -620,7 +620,7 @@ checksum = "d77f7ec81a6d05a3abb01ab6eb7590f6083d08449fe5a1c8b1e620283546ccb7"
 
 [[package]]
 name = "honey-explore"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "anyhow",
  "askama",
@@ -641,12 +641,12 @@ dependencies = [
 
 [[package]]
 name = "honeycomb-client"
-version = "0.1.0"
-source = "git+https://github.com/jerbly/honeycomb-client?tag=v0.1.0#a595935dd7da5170872cd34856c73b3559e8c04b"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",
  "futures",
+ "openssl",
  "reqwest",
  "serde",
  "serde_json",

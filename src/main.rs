@@ -192,20 +192,46 @@ async fn used_by_handler(
     }
 }
 
+enum QueryType {
+    Exists,
+    Avg,
+}
+
 async fn honeycomb_exists_handler(
     State(state): State<AppState>,
     Path((dataset, column)): Path<(String, String)>,
 ) -> Response {
-    match &state.hc {
-        None => "".into_response(),
-        Some(hc) => {
-            if let Ok(exists) = hc.get_exists_query_url(&dataset, &column).await {
-                ([("HX-Redirect", exists)], "").into_response()
-            } else {
-                "".into_response()
+    if let Some(hc) = &state.hc {
+        if let Some(node) = state.db.get_node(&column) {
+            if let Some(value) = node.value.as_ref() {
+                if let Some(column_type) = &value.r#type {
+                    let query_type = match column_type {
+                        semconv::Type::Simple(t) => match t.as_str() {
+                            "int" | "double" | "template[int]" | "template[double]" => {
+                                QueryType::Avg
+                            }
+                            _ => QueryType::Exists,
+                        },
+                        semconv::Type::Complex(_) => QueryType::Exists,
+                    };
+
+                    match query_type {
+                        QueryType::Exists => {
+                            if let Ok(exists) = hc.get_exists_query_url(&dataset, &column).await {
+                                return ([("HX-Redirect", exists)], "").into_response();
+                            }
+                        }
+                        QueryType::Avg => {
+                            if let Ok(avg) = hc.get_avg_query_url(&dataset, &column).await {
+                                return ([("HX-Redirect", avg)], "").into_response();
+                            }
+                        }
+                    }
+                }
             }
         }
     }
+    "".into_response()
 }
 
 async fn node_handler(
