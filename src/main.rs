@@ -16,7 +16,7 @@ use axum::{
 use clap::Parser;
 use data::Node;
 use honeycomb_client::honeycomb::HoneyComb;
-use semconv::{Attribute, Examples, SemanticConventions};
+use semconv::{Attribute, Examples, PrimitiveType, SemanticConventions};
 
 #[derive(Template)]
 #[template(path = "index.html")]
@@ -192,11 +192,6 @@ async fn used_by_handler(
     }
 }
 
-enum QueryType {
-    Exists,
-    Avg,
-}
-
 async fn honeycomb_exists_handler(
     State(state): State<AppState>,
     Path((dataset, column)): Path<(String, String)>,
@@ -205,28 +200,19 @@ async fn honeycomb_exists_handler(
         if let Some(node) = state.db.get_node(&column) {
             if let Some(value) = node.value.as_ref() {
                 if let Some(column_type) = &value.r#type {
-                    let query_type = match column_type {
-                        semconv::Type::Simple(t) => match t.as_str() {
-                            "int" | "double" | "template[int]" | "template[double]" => {
-                                QueryType::Avg
-                            }
-                            _ => QueryType::Exists,
-                        },
-                        semconv::Type::Complex(_) => QueryType::Exists,
-                    };
-
-                    match query_type {
-                        QueryType::Exists => {
-                            if let Ok(exists) = hc.get_exists_query_url(&dataset, &column).await {
-                                return ([("HX-Redirect", exists)], "").into_response();
-                            }
-                        }
-                        QueryType::Avg => {
+                    match column_type {
+                        semconv::Type::Simple(PrimitiveType::Int)
+                        | semconv::Type::Simple(PrimitiveType::Double) => {
                             if let Ok(avg) = hc.get_avg_query_url(&dataset, &column).await {
                                 return ([("HX-Redirect", avg)], "").into_response();
                             }
                         }
-                    }
+                        _ => {
+                            if let Ok(exists) = hc.get_exists_query_url(&dataset, &column).await {
+                                return ([("HX-Redirect", exists)], "").into_response();
+                            }
+                        }
+                    };
                 }
             }
         }

@@ -29,7 +29,7 @@
                             {% when Some with (deprecated) %}
                                 <s>{{ level }}.<b>{{ node.name }}</b></s>
                             {% when None %}
-                                <mark>{{ level }}.<b>{{ node.name }}</b></mark>
+                                <mark>{{ level }}.<b>{{ node.name }}</b>{% if val.is_template_type() %}.&lt;key&gt;{% endif %}</mark>
                         {% endmatch %}
                     {% endif %}
 

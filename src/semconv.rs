@@ -54,8 +54,82 @@ impl Display for ComplexType {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
+pub enum PrimitiveType {
+    String,
+    Int,
+    Double,
+    Boolean,
+    ArrayOfString,
+    ArrayOfInt,
+    ArrayOfDouble,
+    ArrayOfBoolean,
+    TemplateOfString,
+    TemplateOfInt,
+    TemplateOfDouble,
+    TemplateOfBoolean,
+    TemplateOfArrayOfString,
+    TemplateOfArrayOfInt,
+    TemplateOfArrayOfDouble,
+    TemplateOfArrayOfBoolean,
+}
+
+impl Display for PrimitiveType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PrimitiveType::String => write!(f, "string"),
+            PrimitiveType::Int => write!(f, "int"),
+            PrimitiveType::Double => write!(f, "double"),
+            PrimitiveType::Boolean => write!(f, "boolean"),
+            PrimitiveType::ArrayOfString => write!(f, "string[]"),
+            PrimitiveType::ArrayOfInt => write!(f, "int[]"),
+            PrimitiveType::ArrayOfDouble => write!(f, "double[]"),
+            PrimitiveType::ArrayOfBoolean => write!(f, "boolean[]"),
+            PrimitiveType::TemplateOfString => write!(f, "template[string]"),
+            PrimitiveType::TemplateOfInt => write!(f, "template[int]"),
+            PrimitiveType::TemplateOfDouble => write!(f, "template[double]"),
+            PrimitiveType::TemplateOfBoolean => write!(f, "template[boolean]"),
+            PrimitiveType::TemplateOfArrayOfString => write!(f, "template[string[]]"),
+            PrimitiveType::TemplateOfArrayOfInt => write!(f, "template[int[]]"),
+            PrimitiveType::TemplateOfArrayOfDouble => write!(f, "template[double[]]"),
+            PrimitiveType::TemplateOfArrayOfBoolean => write!(f, "template[boolean[]]"),
+        }
+    }
+}
+
+fn deserialize_primitive_type<'de, D>(deserializer: D) -> Result<PrimitiveType, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: serde_yaml::Value = serde::Deserialize::deserialize(deserializer)?;
+    match s {
+        serde_yaml::Value::String(s) => match s.as_str() {
+            "string" => Ok(PrimitiveType::String),
+            "int" => Ok(PrimitiveType::Int),
+            "double" => Ok(PrimitiveType::Double),
+            "boolean" => Ok(PrimitiveType::Boolean),
+            "string[]" => Ok(PrimitiveType::ArrayOfString),
+            "int[]" => Ok(PrimitiveType::ArrayOfInt),
+            "double[]" => Ok(PrimitiveType::ArrayOfDouble),
+            "boolean[]" => Ok(PrimitiveType::ArrayOfBoolean),
+            "template[string]" => Ok(PrimitiveType::TemplateOfString),
+            "template[int]" => Ok(PrimitiveType::TemplateOfInt),
+            "template[double]" => Ok(PrimitiveType::TemplateOfDouble),
+            "template[boolean]" => Ok(PrimitiveType::TemplateOfBoolean),
+            "template[string[]]" => Ok(PrimitiveType::TemplateOfArrayOfString),
+            "template[int[]]" => Ok(PrimitiveType::TemplateOfArrayOfInt),
+            "template[double[]]" => Ok(PrimitiveType::TemplateOfArrayOfDouble),
+            "template[boolean[]]" => Ok(PrimitiveType::TemplateOfArrayOfBoolean),
+            _ => Err(serde::de::Error::custom("Failed to parse type")),
+        },
+        _ => Err(serde::de::Error::custom("Failed to parse type")),
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(untagged)]
 pub enum Type {
-    Simple(String),
+    #[serde(deserialize_with = "deserialize_primitive_type")]
+    Simple(PrimitiveType),
     Complex(ComplexType),
 }
 
@@ -113,6 +187,22 @@ pub struct Attribute {
     pub deprecated: Option<String>,
     pub used_by: Option<Vec<String>>,
     pub defined_in: Option<String>,
+}
+
+impl Attribute {
+    pub fn is_template_type(&self) -> bool {
+        matches!(
+            &self.r#type,
+            Some(Type::Simple(PrimitiveType::TemplateOfString))
+                | Some(Type::Simple(PrimitiveType::TemplateOfInt))
+                | Some(Type::Simple(PrimitiveType::TemplateOfDouble))
+                | Some(Type::Simple(PrimitiveType::TemplateOfBoolean))
+                | Some(Type::Simple(PrimitiveType::TemplateOfArrayOfString))
+                | Some(Type::Simple(PrimitiveType::TemplateOfArrayOfInt))
+                | Some(Type::Simple(PrimitiveType::TemplateOfArrayOfDouble))
+                | Some(Type::Simple(PrimitiveType::TemplateOfArrayOfBoolean))
+        )
+    }
 }
 
 #[derive(Debug, Deserialize)]
