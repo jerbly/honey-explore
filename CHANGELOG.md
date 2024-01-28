@@ -4,6 +4,7 @@
 - Template type attributes:
     - Now render with the `.<key>` suffix in the name
     - The dictionary, discovered from Honeycomb, is displayed in a `keys` section with query links
+- Added a favicon
 
 
 # 0.1.5
