@@ -8,7 +8,10 @@ use askama::Template;
 use askama_axum::IntoResponse;
 use axum::{
     extract::{Path, State},
-    http::header::HeaderMap,
+    http::{
+        header::{self, HeaderMap},
+        StatusCode, Uri,
+    },
     response::Response,
     routing::get,
     Router,
@@ -16,6 +19,8 @@ use axum::{
 use clap::Parser;
 use data::Node;
 use honeycomb_client::honeycomb::HoneyComb;
+use rust_embed;
+use rust_embed::RustEmbed;
 use semconv::{Attribute, Examples, PrimitiveType, SemanticConventions, Type::Simple};
 
 #[derive(Template)]
@@ -74,6 +79,38 @@ struct Args {
     /// TCP Address to listen on.
     #[arg(short, long, default_value_t = String::from("127.0.0.1:3000"))]
     addr: String,
+}
+
+#[derive(RustEmbed)]
+#[folder = "static/"]
+struct Asset;
+pub struct StaticFile<T>(pub T);
+
+impl<T> IntoResponse for StaticFile<T>
+where
+    T: Into<String>,
+{
+    fn into_response(self) -> Response {
+        let path = self.0.into();
+
+        match Asset::get(path.as_str()) {
+            Some(content) => {
+                let mime = mime_guess::from_path(path).first_or_octet_stream();
+                ([(header::CONTENT_TYPE, mime.as_ref())], content.data).into_response()
+            }
+            None => (StatusCode::NOT_FOUND, "404 Not Found").into_response(),
+        }
+    }
+}
+
+async fn static_handler(uri: Uri) -> impl IntoResponse {
+    let mut path = uri.path().trim_start_matches('/').to_string();
+
+    if path.starts_with("dist/") {
+        path = path.replace("dist/", "");
+    }
+
+    StaticFile(path)
 }
 
 #[tokio::main]
@@ -139,6 +176,7 @@ async fn main() -> anyhow::Result<()> {
             "/hnyexists/:dataset/:column/:suffix",
             get(honeycomb_exists_handler),
         )
+        .route("/dist/*file", get(static_handler))
         .with_state(state);
 
     // run it
