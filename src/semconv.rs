@@ -1,7 +1,7 @@
 use glob::glob;
 use serde::Deserialize;
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     fmt::{Display, Formatter},
     fs::File,
     path::PathBuf,
@@ -187,6 +187,7 @@ pub struct Attribute {
     pub deprecated: Option<String>,
     pub used_by: Option<Vec<String>>,
     pub defined_in: Option<String>,
+    pub template_suffixes: Option<BTreeMap<String, Vec<String>>>,
 }
 
 impl Attribute {

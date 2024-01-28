@@ -1,5 +1,5 @@
 {% for d in datasets %}
-    <a href="#" hx-get="/hnyexists/{{ d }}/{{ attribute }}/none" hx-swap="none">{{ d }}</a>
+    <a href="#" hx-get="/hnyexists/{{ d }}/{{ attribute }}/{{ suffix }}" hx-swap="none">{{ d }}</a>
     {% if !loop.last %}
         ,
     {% endif %}        

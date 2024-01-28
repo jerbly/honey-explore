@@ -1,6 +1,10 @@
 # 0.1.6
 
-- Number-type attributes now run an avg query when a dataset is clicked
+- Number type attributes now run an `avg` query when a dataset is clicked
+- Template type attributes:
+    - Now render with the `.<key>` suffix in the name
+    - The dictionary, discovered from Honeycomb, is displayed in a `keys` section with query links
+
 
 # 0.1.5
 

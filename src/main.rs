@@ -1,7 +1,7 @@
 mod data;
 mod semconv;
 
-use std::{collections::HashMap, path};
+use std::{collections::BTreeMap, path, vec};
 
 use anyhow::Context;
 use askama::Template;
@@ -16,7 +16,7 @@ use axum::{
 use clap::Parser;
 use data::Node;
 use honeycomb_client::honeycomb::HoneyComb;
-use semconv::{Attribute, Examples, PrimitiveType, SemanticConventions};
+use semconv::{Attribute, Examples, PrimitiveType, SemanticConventions, Type::Simple};
 
 #[derive(Template)]
 #[template(path = "index.html")]
@@ -37,6 +37,14 @@ struct NodeTemplate {
 #[template(path = "usedby.html")]
 struct UsedByTemplate {
     attribute: String,
+    datasets: Vec<String>,
+}
+
+#[derive(Template)]
+#[template(path = "suffix_usedby.html")]
+struct SuffixUsedByTemplate {
+    attribute: String,
+    suffix: String,
     datasets: Vec<String>,
 }
 
@@ -93,9 +101,7 @@ async fn main() -> anyhow::Result<()> {
         ));
     }
     // load semantic conventions
-    let sc = SemanticConventions::new(&root_dirs)?;
-    let mut keys: Vec<_> = sc.attribute_map.keys().collect();
-    keys.sort();
+    let mut sc = SemanticConventions::new(&root_dirs)?;
 
     // build the tree
     let mut root = Node::new("root".to_string(), None);
@@ -107,22 +113,18 @@ async fn main() -> anyhow::Result<()> {
             None
         }
     };
+
+    // if we have a valid api-key with enough access permission then
+    // fetch all the honeycomb data and augment the attributes
     if let Some(client) = &hc {
-        // if we have a valid api-key with enough access permission then
-        // fetch all the honeycomb data and build a map of attribute name to datasets
-        let attributes_used_by_datasets = get_attributes_used_by_datasets(client, &sc).await?;
-        for k in keys {
-            let mut attribute = sc.attribute_map[k].clone();
-            if let Some(datasets) = attributes_used_by_datasets.get(k) {
-                attribute.used_by = Some(datasets.clone());
-            }
-            root.add_node(k, Some(attribute));
-        }
-    } else {
-        // otherwise just build the tree with no honeycomb data
-        for k in keys {
-            root.add_node(k, Some(sc.attribute_map[k].clone()));
-        }
+        add_hny_to_attributes(client, &mut sc).await?;
+    }
+
+    // add all the attributes to the tree
+    let mut keys: Vec<_> = sc.attribute_map.keys().collect();
+    keys.sort();
+    for k in keys {
+        root.add_node(k, Some(sc.attribute_map[k].clone()));
     }
 
     let state = AppState { db: root, hc };
@@ -132,7 +134,11 @@ async fn main() -> anyhow::Result<()> {
         .route("/", get(handler))
         .route("/node/:name", get(node_handler))
         .route("/usedby/:name", get(used_by_handler))
-        .route("/hnyexists/:dataset/:column", get(honeycomb_exists_handler))
+        .route("/suffix_usedby/:name/:suffix", get(suffix_used_by_handler))
+        .route(
+            "/hnyexists/:dataset/:column/:suffix",
+            get(honeycomb_exists_handler),
+        )
         .with_state(state);
 
     // run it
@@ -142,30 +148,43 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn get_attributes_used_by_datasets(
-    hc: &HoneyComb,
-    sc: &SemanticConventions,
-) -> anyhow::Result<HashMap<String, Vec<String>>> {
+async fn add_hny_to_attributes(hc: &HoneyComb, sc: &mut SemanticConventions) -> anyhow::Result<()> {
     let dataset_slugs = hc.get_dataset_slugs(30, None).await?;
-    let mut attributes_used_by_datasets: HashMap<String, Vec<String>> = HashMap::new();
     eprint!("Reading {} datasets ", dataset_slugs.len());
     hc.process_datasets_columns(30, &dataset_slugs, |dataset, columns| {
         eprint!(".");
         for column in columns {
-            // TODO handle template types here with a template_types map in SemanticConventions
-            //      Will also need a change to the honeycomb query in this case
-            //      and add <key> to the end of the attribute name in the UI
-            if sc.attribute_map.contains_key(&column.key_name) {
-                let datasets = attributes_used_by_datasets
-                    .entry(column.key_name.clone())
-                    .or_default();
-                datasets.push(dataset.clone());
+            if let Some(attribute) = sc.attribute_map.get_mut(&column.key_name) {
+                match attribute.used_by {
+                    Some(ref mut used_by) => used_by.push(dataset.clone()),
+                    None => attribute.used_by = Some(vec![dataset.clone()]),
+                }
+            } else {
+                // Handle template types:
+                // Extract the suffix from the end and see if the prefix is a known attribute
+                if let Some((prefix, suffix)) = column.key_name.rsplit_once('.') {
+                    if let Some(attribute) = sc.attribute_map.get_mut(prefix) {
+                        if attribute.is_template_type() {
+                            let suffixes = match attribute.template_suffixes {
+                                Some(ref mut suffixes) => suffixes,
+                                None => {
+                                    attribute.template_suffixes = Some(BTreeMap::new());
+                                    attribute.template_suffixes.as_mut().unwrap()
+                                }
+                            };
+                            suffixes
+                                .entry(suffix.to_owned())
+                                .and_modify(|datasets| datasets.push(dataset.clone()))
+                                .or_insert(vec![dataset.clone()]);
+                        }
+                    }
+                }
             }
         }
     })
     .await?;
     eprintln!();
-    Ok(attributes_used_by_datasets)
+    Ok(())
 }
 
 async fn handler() -> impl IntoResponse {
@@ -192,19 +211,61 @@ async fn used_by_handler(
     }
 }
 
+async fn suffix_used_by_handler(
+    State(state): State<AppState>,
+    Path((name, suffix)): Path<(String, String)>,
+) -> impl IntoResponse {
+    let mut datasets = vec![];
+    if let Some(node) = state.db.get_node(&name) {
+        if let Some(attribute) = &node.value {
+            if let Some(suffixes) = &attribute.template_suffixes {
+                if let Some(used_by) = suffixes.get(&suffix) {
+                    datasets.extend_from_slice(used_by);
+                }
+            }
+        }
+    }
+    SuffixUsedByTemplate {
+        attribute: name,
+        suffix,
+        datasets,
+    }
+}
+
 async fn honeycomb_exists_handler(
     State(state): State<AppState>,
-    Path((dataset, column)): Path<(String, String)>,
+    Path((dataset, column, suffix)): Path<(String, String, String)>,
 ) -> Response {
     if let Some(hc) = &state.hc {
         if let Some(node) = state.db.get_node(&column) {
             if let Some(value) = node.value.as_ref() {
                 if let Some(column_type) = &value.r#type {
                     match column_type {
-                        semconv::Type::Simple(PrimitiveType::Int)
-                        | semconv::Type::Simple(PrimitiveType::Double) => {
+                        Simple(PrimitiveType::Int) | Simple(PrimitiveType::Double) => {
                             if let Ok(avg) = hc.get_avg_query_url(&dataset, &column).await {
                                 return ([("HX-Redirect", avg)], "").into_response();
+                            }
+                        }
+                        Simple(PrimitiveType::TemplateOfInt)
+                        | Simple(PrimitiveType::TemplateOfDouble) => {
+                            let column_with_suffix = format!("{}.{}", column, suffix);
+                            if let Ok(avg) =
+                                hc.get_avg_query_url(&dataset, &column_with_suffix).await
+                            {
+                                return ([("HX-Redirect", avg)], "").into_response();
+                            }
+                        }
+                        Simple(PrimitiveType::TemplateOfString)
+                        | Simple(PrimitiveType::TemplateOfBoolean)
+                        | Simple(PrimitiveType::TemplateOfArrayOfString)
+                        | Simple(PrimitiveType::TemplateOfArrayOfInt)
+                        | Simple(PrimitiveType::TemplateOfArrayOfDouble)
+                        | Simple(PrimitiveType::TemplateOfArrayOfBoolean) => {
+                            let column_with_suffix = format!("{}.{}", column, suffix);
+                            if let Ok(exists) =
+                                hc.get_exists_query_url(&dataset, &column_with_suffix).await
+                            {
+                                return ([("HX-Redirect", exists)], "").into_response();
                             }
                         }
                         _ => {
