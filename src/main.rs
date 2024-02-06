@@ -19,7 +19,6 @@ use axum::{
 use clap::Parser;
 use data::Node;
 use honeycomb_client::honeycomb::HoneyComb;
-use rust_embed;
 use rust_embed::RustEmbed;
 use semconv::{Attribute, Examples, PrimitiveType, SemanticConventions, Type::Simple};
 
@@ -407,5 +406,3 @@ fn get_links(names: &Vec<String>) -> Vec<String> {
     }
     links
 }
-
-// TODO add favicon

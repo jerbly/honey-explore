@@ -1,3 +1,7 @@
+# 0.1.7
+
+- Fix: Timerange in queries was sometimes rejected for being too long.
+
 # 0.1.6
 
 - Number type attributes now run an `avg` query when a dataset is clicked
