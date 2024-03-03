@@ -299,14 +299,17 @@ async fn honeycomb_exists_handler(
                         | Simple(PrimitiveType::TemplateOfArrayOfDouble)
                         | Simple(PrimitiveType::TemplateOfArrayOfBoolean) => {
                             let column_with_suffix = format!("{}.{}", column, suffix);
-                            if let Ok(exists) =
-                                hc.get_exists_query_url(&dataset, &column_with_suffix).await
+                            if let Ok(exists) = hc
+                                .get_exists_query_url(&dataset, &column_with_suffix, false)
+                                .await
                             {
                                 return ([("HX-Redirect", exists)], "").into_response();
                             }
                         }
                         _ => {
-                            if let Ok(exists) = hc.get_exists_query_url(&dataset, &column).await {
+                            if let Ok(exists) =
+                                hc.get_exists_query_url(&dataset, &column, false).await
+                            {
                                 return ([("HX-Redirect", exists)], "").into_response();
                             }
                         }

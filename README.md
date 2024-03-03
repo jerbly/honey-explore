@@ -6,9 +6,13 @@ Creates a local web app for you to explore your schema compatible OpenTelemetry 
 
 All attributes are built into a namespace tree from any supplied Semantic Convention models. Each attribute has its documentation alongside Honeycomb datasets that have used it in the last 60 days. Clicking on a dataset name will take you to a query in the Honeycomb UI grouping by that attribute.
 
+## Installing
+
+[Follow the instructions on the release page.](https://github.com/jerbly/honey-explore/releases) There are installers of pre-built binaries for popular OSes.
+
 ## Building
 
-honey-explore is written in Rust, you'll need a
+If you really want to build from source and not use a [pre-built binary release](https://github.com/jerbly/honey-explore/releases) then firstly you'll need a
 [Rust installation](https://www.rust-lang.org/) to compile it:
 
 ```shell
@@ -16,7 +20,7 @@ $ git clone https://github.com/jerbly/honey-explore.git
 $ cd honey-explore
 $ cargo build --release
 $ ./target/release/honey-explore --version
-0.1.0
+0.1.8
 ```
 
 ## Usage

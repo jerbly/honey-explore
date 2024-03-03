@@ -1,3 +1,8 @@
+# 0.1.8
+
+- Pulling in improvements from [honeycomb-client](https://github.com/jerbly/honeycomb-client) 0.2.1
+- Updated cargo-dist to 0.11.1
+
 # 0.1.7
 
 - Fix: Timerange in queries was sometimes rejected for being too long.
