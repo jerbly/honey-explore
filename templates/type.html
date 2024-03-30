@@ -1,0 +1,35 @@
+{% match _type %}
+    {% when semconv::Type::Simple with (_) %}
+        <small><i>{{ _type }}</i></small>
+    {% when semconv::Type::Complex with (enum) %}
+        <small><i>
+        {% if enum.allow_custom_values %}
+            open enum:
+        {% else %}
+            enum:
+        {% endif %}
+        {% if enum.has_briefs() %}
+            <ul>
+                {% for member in enum.members %}
+                    <li><code>{{ member.value }}</code>
+                    {% match member.brief %}
+                        {% when Some with (brief) %}
+                            - {{ brief }}
+                        {% when None %}
+                    {% endmatch %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            {% for member in enum.members %}
+                <code>{{ member.value }}</code>
+                {% if !loop.last %}
+                    ,
+                {% endif %}        
+            {% endfor %}      
+        {% endif %}
+        </i></small>
+{% endmatch %}
+
+
+

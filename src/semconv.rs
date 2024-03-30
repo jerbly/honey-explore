@@ -26,6 +26,7 @@ impl Display for MemberValue {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Member {
     pub value: MemberValue,
+    pub brief: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -33,6 +34,12 @@ pub struct ComplexType {
     #[serde(default)]
     pub allow_custom_values: bool,
     pub members: Vec<Member>,
+}
+
+impl ComplexType {
+    pub fn has_briefs(&self) -> bool {
+        self.members.iter().any(|member| member.brief.is_some())
+    }
 }
 
 impl Display for ComplexType {

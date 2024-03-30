@@ -21,7 +21,7 @@
                         {% match val.deprecated %}
                             {% when Some with (deprecated) %}
                                 <s><b>{{ node.name }}</b></s>
-                            {% when None %}
+                            {% when None %} 
                                 <mark><b>{{ node.name }}</b></mark>
                         {% endmatch %}
                     {% else %}
@@ -41,7 +41,7 @@
 
                     {% match val.type %}
                         {% when Some with (_type) %}
-                            <small><i>{{ _type }}</i></small>
+                            {% include "type.html" %}
                         {% when None %}
                     {% endmatch %}
 
