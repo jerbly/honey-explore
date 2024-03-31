@@ -1,12 +1,11 @@
 {% match _type %}
     {% when semconv::Type::Simple with (_) %}
-        <small><i>{{ _type }}</i></small>
+        <b>{{ _type }}</b>
     {% when semconv::Type::Complex with (enum) %}
-        <small><i>
         {% if enum.allow_custom_values %}
-            open enum:
+            <b>open enum</b>:
         {% else %}
-            enum:
+            <b>enum</b>:
         {% endif %}
         {% if enum.has_briefs() %}
             <ul>
@@ -28,7 +27,6 @@
                 {% endif %}        
             {% endfor %}      
         {% endif %}
-        </i></small>
 {% endmatch %}
 
 

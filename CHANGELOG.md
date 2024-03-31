@@ -1,3 +1,14 @@
+# 0.1.9
+
+- Enums are now displayed in two ways:
+  - If any brief is defined, the enum is displayed as a list of variants with their brief.
+  - Otherwise, the compact form just showing the values is displayed.
+- Examples for enums are now hidden since they're just repeats of the enum.
+- Improvements to the display for clarity:
+  - All branches are now shown before all leaves rather than mixed together.
+  - Horizontal rules to separate attribute definitions.
+  - Rework of Type with Examples on the same line.
+
 # 0.1.8
 
 - Pulling in improvements from [honeycomb-client](https://github.com/jerbly/honeycomb-client) 0.2.1

@@ -211,6 +211,10 @@ impl Attribute {
                 | Some(Type::Simple(PrimitiveType::TemplateOfArrayOfBoolean))
         )
     }
+
+    pub fn is_complex_type(&self) -> bool {
+        matches!(&self.r#type, Some(Type::Complex(_)))
+    }
 }
 
 #[derive(Debug, Deserialize)]

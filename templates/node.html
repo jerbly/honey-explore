@@ -14,9 +14,26 @@
     <ul>
         {% for node in nodes %}
             {% let attribute = level.clone() + "." + node.name.as_str() %} 
-            <li>
+            
+            {% match node.value %}
+                {% when Some with (_) %}
+                {% when None %}
+                    <li>
+                    {% if level == "root" %}
+                        <a href="#" hx-get="/node/{{ node.name }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
+                    {% else %}
+                        {{ level }}.<a href="#" hx-get="/node/{{ attribute }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
+                    {% endif %}
+                    </li>
+            {% endmatch %}
+        {% endfor %}
+
+        {% for node in nodes %}
+            {% let attribute = level.clone() + "." + node.name.as_str() %} 
             {% match node.value %}
                 {% when Some with (val) %}
+                <hr/>
+                <li>
                     {% if level == "root" %}
                         {% match val.deprecated %}
                             {% when Some with (deprecated) %}
@@ -39,15 +56,9 @@
                         {% when None %}
                     {% endmatch %}
 
-                    {% match val.type %}
-                        {% when Some with (_type) %}
-                            {% include "type.html" %}
-                        {% when None %}
-                    {% endmatch %}
-
                     {% match val.deprecated %}
                         {% when Some with (deprecated) %}
-                            <small><i>{{ deprecated|markdown }}</i></small>
+                            <i>{{ deprecated|markdown }}</i>
                         {% when None %}
                     {% endmatch %}                    
 
@@ -57,22 +68,30 @@
                         {% when None %}
                     {% endmatch %}
 
-                    {% match val.examples %}
-                        {% when Some with (examples) %}
-                            e.g.  
-                            {% match examples %}
-                            {% when Examples::SimpleType with (ex) %}
-                                <code>{{ ex }}</code>
-                            {% when Examples::ArrayType with (exs) %}
-                                {% for ex in exs %}
-                                    <code>{{ ex }}</code>
-                                    {% if !loop.last %}
-                                        ,
-                                    {% endif %}        
-                                {% endfor %}                
-                            {% endmatch %}
+                    {% match val.type %}
+                        {% when Some with (_type) %}
+                            {% include "type.html" %}
                         {% when None %}
                     {% endmatch %}
+
+                    {% if !val.is_complex_type() %}
+                        {% match val.examples %}
+                            {% when Some with (examples) %}
+                                <small>e.g.</small>  
+                                {% match examples %}
+                                {% when Examples::SimpleType with (ex) %}
+                                    <code>{{ ex }}</code>
+                                {% when Examples::ArrayType with (exs) %}
+                                    {% for ex in exs %}
+                                        <code>{{ ex }}</code>
+                                        {% if !loop.last %}
+                                            ,
+                                        {% endif %}        
+                                    {% endfor %}                
+                                {% endmatch %}                                
+                            {% when None %}
+                        {% endmatch %}
+                    {% endif %}
 
                     {% match val.note %}
                         {% when Some with (note) %}
@@ -83,7 +102,7 @@
                     {% if val.is_template_type() %}
                         {% match val.template_suffixes %}
                             {% when Some with (suffixes) %}
-                                <p><small><b>keys</b>:<br/>
+                                <p><b>keys</b>:<small><br/>
                                 {% for (suffix,datasets) in suffixes.iter() %}
                                     <mark>{{ suffix }}</mark>:
                                         {% if datasets.len() < 10 %} 
@@ -100,24 +119,18 @@
                         {% match val.used_by %}
                             {% when Some with (datasets) %}
                                 {% if datasets.len() < 10 %}
-                                <p><small><b>used by</b>:
+                                <p><b>used by</b>:<small>
                                     {% include "usedby.html" %}                
                                 </small></p>
                                 {% else %}
-                                    <p><small><b>used by</b>: <a href="#" hx-get="/usedby/{{ attribute }}" hx-swap="outerHTML">10+ datasets</a></small></p>
+                                    <p><b>used by</b>:<small> <a href="#" hx-get="/usedby/{{ attribute }}" hx-swap="outerHTML">10+ datasets</a></small></p>
                                 {% endif %}
                             {% when None %}
                         {% endmatch %}
                     {% endif %}
-
+                </li>
                 {% when None %}
-                    {% if level == "root" %}
-                        <a href="#" hx-get="/node/{{ node.name }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
-                    {% else %}
-                        {{ level }}.<a href="#" hx-get="/node/{{ attribute }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
-                    {% endif %}
-                {% endmatch %}
-            </li>
+            {% endmatch %}
         {% endfor %}
     </ul>
 </div>
