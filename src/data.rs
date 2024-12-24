@@ -1,18 +1,30 @@
+use askama::Template;
 use std::collections::BTreeMap;
 
-#[derive(Clone)]
+#[derive(Template, Clone)]
+#[template(path = "tree.html")]
 pub struct Node<T> {
     pub name: String,
+    pub path: String,
     pub value: Option<T>,
     pub children: BTreeMap<String, Node<T>>,
 }
 
 impl<T> Node<T> {
-    pub fn new(name: String, value: Option<T>) -> Self {
+    pub fn new(name: String, path: String, value: Option<T>) -> Self {
         Node {
             name,
+            path,
             value,
             children: BTreeMap::new(),
+        }
+    }
+
+    fn make_path(path: &str, part: &str) -> String {
+        if path == "" {
+            part.to_owned()
+        } else {
+            format!("{path}.{part}")
         }
     }
 
@@ -22,7 +34,11 @@ impl<T> Node<T> {
 
         for part in parts {
             if !current_node.children.contains_key(part) {
-                let new_node = Node::new(part.to_string(), None);
+                let new_node = Node::<T>::new(
+                    part.to_string(),
+                    Node::<T>::make_path(&current_node.path, part),
+                    None,
+                );
                 current_node.children.insert(part.to_string(), new_node);
             }
             current_node = current_node.children.get_mut(part).unwrap();
@@ -44,6 +60,26 @@ impl<T> Node<T> {
 
         Some(current_node)
     }
+
+    pub fn has_grandchild(&self) -> bool {
+        for child in self.children.values() {
+            if !child.children.is_empty() {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Prints the whole tree starting from the current node
+    pub fn print(&self, level: usize, leaves: bool) {
+        println!("{:indent$}{}", "", self.name, indent = level * 2);
+        for child in self.children.values() {
+            if !leaves && child.children.is_empty() {
+                continue;
+            }
+            child.print(level + 1, leaves);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -52,7 +88,7 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let node = Node::new("root".to_string(), Some(1));
+        let node = Node::new("root".to_string(), "".to_owned(), Some(1));
 
         assert_eq!(node.name, "root");
         assert_eq!(node.value, Some(1));
@@ -61,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_get_node() {
-        let mut root = Node::new("root".to_string(), None);
+        let mut root = Node::new("root".to_string(), "".to_owned(), None);
 
         root.add_node("aws.s3.bucket", Some("abc".to_string()));
         root.add_node("aws.s3.key", Some("xyz".to_string()));
@@ -84,7 +120,7 @@ mod tests {
 
     #[test]
     fn test_children_of_aws_s3() {
-        let mut root = Node::new("root".to_string(), None);
+        let mut root = Node::new("root".to_string(), "".to_owned(), None);
 
         root.add_node("aws.s3.bucket", Some("abc".to_string()));
         root.add_node("aws.s3.key", Some("xyz".to_string()));

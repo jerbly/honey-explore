@@ -28,6 +28,12 @@ struct IndexTemplate {
     node: String,
 }
 
+// #[derive(Template)]
+// #[template(path = "tree.html")]
+// struct TreeTemplate {
+//     node: Node<Attribute>,
+// }
+
 #[derive(Template)]
 #[template(path = "node.html")]
 struct NodeTemplate {
@@ -140,7 +146,7 @@ async fn main() -> anyhow::Result<()> {
     let mut sc = SemanticConventions::new(&root_dirs)?;
 
     // build the tree
-    let mut root = Node::new("root".to_string(), None);
+    let mut root = Node::new("root".to_string(), "".to_owned(), None);
     let hc = match honeycomb_client::get_honeycomb(&["columns", "createDatasets", "queries"]).await
     {
         Ok(hclient) => hclient,
@@ -162,12 +168,15 @@ async fn main() -> anyhow::Result<()> {
     for k in keys {
         root.add_node(k, Some(sc.attribute_map[k].clone()));
     }
+    // print the tree
+    root.print(0, false);
 
     let state = AppState { db: root, hc };
 
     // build our application with a route
     let app = Router::new()
         .route("/", get(handler))
+        .route("/tree/:name", get(tree_handler))
         .route("/node/:name", get(node_handler))
         .route("/usedby/:name", get(used_by_handler))
         .route("/suffix_usedby/:name/:suffix", get(suffix_used_by_handler))
@@ -319,6 +328,18 @@ async fn honeycomb_exists_handler(
         }
     }
     "".into_response()
+}
+
+async fn tree_handler(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> impl IntoResponse {
+    if let Some(node) = state.db.get_node(&name) {
+        node.clone()
+    } else {
+        state.db.clone()
+    }
+    .into_response()
 }
 
 async fn node_handler(

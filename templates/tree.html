@@ -1,0 +1,21 @@
+{% if name == "root" %}
+    <ul id="myUL">
+        {% for c in children.values() %}
+            {% if !c.children.is_empty() %}
+                {{ c.render().unwrap()|safe }}
+            {% endif %}
+        {% endfor %}
+    </ul>
+{% else if self.has_grandchild() == false %}
+    <li><a class="blob" href="#" hx-get="/node/{{ path }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ name }}</a></li>
+{% else %}
+    <li><a class="caret" onclick='this.parentElement.querySelector(".nested").classList.toggle("active");this.classList.toggle("caret-down");' href="#" hx-get="/node/{{ path }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ name }}</a>
+        <ul class="nested">
+            {% for c in children.values() %}
+                {% if !c.children.is_empty() %}
+                    {{ c.render().unwrap()|safe }}
+                {% endif %}
+            {% endfor %}
+        </ul>    
+    </li>
+{% endif %}

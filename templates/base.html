@@ -1,16 +1,222 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="https://unpkg.com/htmx.org@1.9.9" integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX" crossorigin="anonymous"></script>
-    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
     <link rel="icon" type="image/ico" href="/dist/favicon.ico" />
     <title>Honey Explore &mdash; {% block title %}Base{% endblock %}</title>
     {% block head %}{% endblock %}
+    <style>
+        /* Override Simple.css defaults that affect our layout */
+        body {
+            display: flex;
+            padding: 0;
+            margin: 0;
+            max-width: none;
+            line-height: 1.5;
+            min-width: 800px;
+            overflow: hidden;
+            background: var(--bg);
+        }
+
+        /* Reset Simple.css container behavior */
+        body > * {
+            max-width: none;
+            margin: 0;
+        }
+
+        .sidebar {
+            width: 350px;
+            background-color: var(--accent-bg);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            height: 100vh;
+            flex-shrink: 0;
+            padding: 1rem;
+        }
+
+        .sidebar > *:first-child {
+            margin-top: 0;
+        }
+
+        .resizer {
+            width: 8px;
+            background-color: var(--accent-bg);
+            cursor: col-resize;
+            height: 100vh;
+            flex-shrink: 0;
+            transition: background-color 0.2s;
+        }
+
+        .resizer:hover, .resizer.dragging {
+            background-color: var(--accent);
+        }
+
+        .resizer::after {
+            content: "";
+            display: block;
+            width: 2px;
+            height: 100%;
+            background: var(--border);
+            margin: 0 auto;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            background-color: var(--bg);
+            height: 100vh;
+        }
+
+        .main-content > *:first-child {
+            margin-top: 0;
+        }
+
+        /* Prevent text selection during resize */
+        body.dragging {
+            cursor: col-resize;
+            user-select: none;
+        }
+
+        /* Override Simple.css article margins */
+        article {
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Ensure proper spacing in content areas */
+        .sidebar article, .main-content article {
+            padding: 1rem;
+        }
+
+        /* Override Simple.css dark mode handling for our layout */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: var(--bg);
+            }
+        }
+
+        /* Remove default bullets */
+        ul, #myUL {
+        list-style-type: none;
+        }
+
+        /* Remove margins and padding from the parent ul */
+        #myUL {
+        margin: 0;
+        padding: 0;
+        }
+
+        /* Style the caret/arrow */
+        .caret {
+        cursor: pointer;
+        user-select: none; /* Prevent text selection */
+        }
+
+        /* Create the caret/arrow with a unicode, and style it */
+        .caret::before {
+            content: "\25B6"; /* Unicode for right-pointing triangle */
+            color: #d81b60;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1em;
+            height: 1em;
+            margin-right: 6px;
+        }
+
+        /* Style the blob */
+        .blob {
+            user-select: none; /* Prevent text selection */
+        }
+
+        /* Create the blob with a unicode, and style it */
+        .blob::before {
+            content: "\2022"; /* Unicode for bullet point */
+            color: #d81b60;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1em;
+            height: 1em;
+            margin-right: 6px;
+        }
+
+        /* Rotate the caret/arrow icon when clicked on (using JavaScript) */
+        .caret-down::before {
+        transform: rotate(90deg);
+        }
+
+        /* Hide the nested list */
+        .nested {
+        display: none;
+        }
+
+        /* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
+        .active {
+        display: block;
+        }
+    </style>
 </head>
 <body>
-    <main>
-        {% block content %}<p>Placeholder content</p>{% endblock %}
-    </main>
+    <div class="sidebar">
+        
+            {% block sidebar %}<p>Placeholder content</p>{% endblock %}
+        
+    </div>
+    <div class="resizer"></div>
+    <div class="main-content">
+        
+            {% block content %}<p>Placeholder content</p>{% endblock %}
+        
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const resizer = document.querySelector('.resizer');
+            const sidebar = document.querySelector('.sidebar');
+            let isResizing = false;
+            let startX;
+            let startWidth;
+
+            // Mouse events for desktop
+            resizer.addEventListener('mousedown', initResize);
+            document.addEventListener('mousemove', resize);
+            document.addEventListener('mouseup', stopResize);
+
+            // Touch events for touch devices
+            resizer.addEventListener('touchstart', initResize);
+            document.addEventListener('touchmove', resize);
+            document.addEventListener('touchend', stopResize);
+
+            function initResize(e) {
+                isResizing = true;
+                startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
+                startWidth = parseInt(getComputedStyle(sidebar).width, 10);
+                
+                resizer.classList.add('dragging');
+                document.body.classList.add('dragging');
+            }
+
+            function resize(e) {
+                if (!isResizing) return;
+
+                const currentX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
+                const diff = currentX - startX;
+                const newWidth = Math.max(100, startWidth + diff);
+                
+                sidebar.style.width = `${newWidth}px`;
+            }
+
+            function stopResize() {
+                isResizing = false;
+                resizer.classList.remove('dragging');
+                document.body.classList.remove('dragging');
+            }
+        });
+    </script>
 </body>
 </html>

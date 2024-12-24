@@ -8,23 +8,23 @@ repository = "https://github.com/jerbly/honey-explore"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.80"
+anyhow = "1.0.93"
 askama = { version = "0.12.1", features = ["with-axum", "markdown"] }
 askama_axum = "0.4.0"
-axum = "0.7.4"
-chrono = { version = "0.4.34", features = ["serde"] }
-clap = { version = "4.5.1", features = ["derive"] }
+axum = "0.7.7"
+chrono = { version = "0.4.38", features = ["serde"] }
+clap = { version = "4.5.20", features = ["derive"] }
 dotenv = "0.15.0"
-futures = "0.3.30"
+futures = "0.3.31"
 glob = "0.3.1"
 honeycomb-client = { git = "https://github.com/jerbly/honeycomb-client", tag = "0.2.1" }
-mime_guess = "2.0.4"
-openssl = { version = "0.10.64", features = ["vendored"] }
-rust-embed = { version = "8.3.0", features = ["mime_guess", "axum"] }
-serde = { version = "1.0.197", features = ["derive"] }
-serde_json = "1.0.114"
-serde_yaml = "0.9.32"
-tokio = { version = "1.36.0", features = ["full"] }
+mime_guess = "2.0.5"
+openssl = { version = "0.10.68", features = ["vendored"] }
+rust-embed = { version = "8.5.0", features = ["mime_guess", "axum"] }
+serde = { version = "1.0.214", features = ["derive"] }
+serde_json = "1.0.132"
+serde_yaml = "0.9.34+deprecated"
+tokio = { version = "1.41.1", features = ["full"] }
 
 # The profile that 'cargo dist' will build with
 [profile.dist]
@@ -40,6 +40,11 @@ ci = ["github"]
 # The installers to generate for each app
 installers = ["shell", "powershell"]
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+]
 # Publish jobs to run in CI
 pr-run-mode = "plan"

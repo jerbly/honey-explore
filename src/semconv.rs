@@ -256,7 +256,7 @@ impl SemanticConventions {
     }
 
     pub fn read_file(&mut self, path: PathBuf, defined_in: String) -> anyhow::Result<()> {
-        println!("reading file: {:?}", path);
+        // println!("reading file: {:?}", path);
         let groups: Groups = serde_yaml::from_reader(&File::open(path)?)?;
         for group in groups.groups {
             if let Some(attributes) = group.attributes {
