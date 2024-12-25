@@ -160,6 +160,37 @@
         display: block;
         }
     </style>
+    <script>
+        function treeActive(element_id) {
+            console.log(element_id);
+            var element = document.getElementById(element_id);
+            if (element) {
+                var nested = element.parentElement.querySelector(".nested");
+                if (nested) {
+                    nested.classList.add("active");
+                    element.classList.add("caret-down");
+                }
+
+                // Traverse up the DOM tree to set active and caret-down on parent elements
+                var parent = element.parentElement;
+                while (parent && parent.id !== "myUL") {
+                    if (parent.tagName === "UL") {
+                        parent.classList.add("active");
+                    }
+                    if (parent.tagName === "LI") {
+                        var caret = parent.querySelector(".caret");
+                        if (caret) {
+                            caret.classList.add("caret-down");
+                        }
+                    }
+                    parent = parent.parentElement;
+                }         
+                
+                // Scroll to the active element
+                element.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="sidebar">

@@ -7,7 +7,7 @@
             {% if loop.last %}
                 {{ lev }}        
             {% else %}
-                <a href="#" hx-get="/node/{{ level_links[loop.index0] }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ lev }}</a>.
+                <a href="#" onclick="treeActive('{{ level_links[loop.index0] }}');" hx-get="/node/{{ level_links[loop.index0] }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ lev }}</a>.
             {% endif %}        
         {% endfor %}
     </h3>
@@ -20,9 +20,9 @@
                 {% when None %}
                     <li>
                     {% if level == "root" %}
-                        <a href="#" hx-get="/node/{{ node.name }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
+                        <a href="#" onclick="treeActive('{{ node.name }}');" hx-get="/node/{{ node.name }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
                     {% else %}
-                        {{ level }}.<a href="#" hx-get="/node/{{ attribute }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
+                        {{ level }}.<a href="#" onclick="treeActive('{{ attribute }}');" hx-get="/node/{{ attribute }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
                     {% endif %}
                     </li>
             {% endmatch %}

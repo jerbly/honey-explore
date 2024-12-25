@@ -28,12 +28,6 @@ struct IndexTemplate {
     node: String,
 }
 
-// #[derive(Template)]
-// #[template(path = "tree.html")]
-// struct TreeTemplate {
-//     node: Node<Attribute>,
-// }
-
 #[derive(Template)]
 #[template(path = "node.html")]
 struct NodeTemplate {

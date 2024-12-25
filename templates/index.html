@@ -3,15 +3,16 @@
 {% block title %} Index {% endblock %}
 
 {% block sidebar %}
+<div id="tree"></div>
 <div
-    id="tree"
-    hx-get="/tree/{{ node }}"
-    hx-target="this"
+    hx-get="/tree/root"
+    hx-target="#tree"
     hx-trigger="load"
     hx-swap="outerHTML"
+    hx-on::after-request="treeActive('{{ node }}')"
 >
-    Loading...
 </div>
+
 {% endblock %}
 
 {% block content %}
