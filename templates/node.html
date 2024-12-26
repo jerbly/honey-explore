@@ -1,8 +1,6 @@
 <div id="list">
+{% if level != "root" %}
     <h3>
-        {% if level != "root" %}
-            <a href="#" hx-get="/node/root" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">root</a> -  
-        {% endif %}
         {% for lev in level_parts %}
             {% if loop.last %}
                 {{ lev }}        
@@ -19,11 +17,7 @@
                 {% when Some with (_) %}
                 {% when None %}
                     <li>
-                    {% if level == "root" %}
-                        <a href="#" onclick="treeActive('{{ node.name }}');" hx-get="/node/{{ node.name }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
-                    {% else %}
-                        {{ level }}.<a href="#" onclick="treeActive('{{ attribute }}');" hx-get="/node/{{ attribute }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
-                    {% endif %}
+                    {{ level }}.<a href="#" onclick="treeActive('{{ attribute }}');" hx-get="/node/{{ attribute }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
                     </li>
             {% endmatch %}
         {% endfor %}
@@ -34,21 +28,12 @@
                 {% when Some with (val) %}
                 <hr/>
                 <li>
-                    {% if level == "root" %}
-                        {% match val.deprecated %}
-                            {% when Some with (deprecated) %}
-                                <s><b>{{ node.name }}</b></s>
-                            {% when None %} 
-                                <mark><b>{{ node.name }}</b></mark>
-                        {% endmatch %}
-                    {% else %}
-                        {% match val.deprecated %}
-                            {% when Some with (deprecated) %}
-                                <s>{{ level }}.<b>{{ node.name }}</b></s>
-                            {% when None %}
-                                <mark>{{ level }}.<b>{{ node.name }}</b>{% if val.is_template_type() %}.&lt;key&gt;{% endif %}</mark>
-                        {% endmatch %}
-                    {% endif %}
+                    {% match val.deprecated %}
+                        {% when Some with (deprecated) %}
+                            <s>{{ level }}.<b>{{ node.name }}</b></s>
+                        {% when None %}
+                            <mark>{{ level }}.<b>{{ node.name }}</b>{% if val.is_template_type() %}.&lt;key&gt;{% endif %}</mark>
+                    {% endmatch %}
 
                     {% match val.defined_in %}
                         {% when Some with (defined_in) %}
@@ -133,4 +118,5 @@
             {% endmatch %}
         {% endfor %}
     </ul>
+{% endif %}
 </div>

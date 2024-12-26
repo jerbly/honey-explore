@@ -92,13 +92,6 @@
             padding: 1rem;
         }
 
-        /* Override Simple.css dark mode handling for our layout */
-        @media (prefers-color-scheme: dark) {
-            body {
-                background: var(--bg);
-            }
-        }
-
         /* Remove default bullets */
         ul, #myUL {
         list-style-type: none;
@@ -119,7 +112,7 @@
         /* Create the caret/arrow with a unicode, and style it */
         .caret::before {
             content: "\25B6"; /* Unicode for right-pointing triangle */
-            color: #d81b60;
+            color: var(--text-light);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -136,7 +129,7 @@
         /* Create the blob with a unicode, and style it */
         .blob::before {
             content: "\2022"; /* Unicode for bullet point */
-            color: #d81b60;
+            color: var(--text-light);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -159,10 +152,19 @@
         .active {
         display: block;
         }
+
+        /* Highlight the active element */
+        .highlight {
+            color: var(--text);
+            font-weight: bold;
+        }
     </style>
     <script>
+        document.addEventListener("openWindow", function(evt){
+            window.open(evt.detail.value,'_blank');
+        });
+
         function treeActive(element_id) {
-            console.log(element_id);
             var element = document.getElementById(element_id);
             if (element) {
                 var nested = element.parentElement.querySelector(".nested");
@@ -185,9 +187,36 @@
                     }
                     parent = parent.parentElement;
                 }         
+
+                // Remove highlight from any previously highlighted element
+                var previousHighlight = document.querySelector(".highlight");
+                if (previousHighlight) {
+                    previousHighlight.classList.remove("highlight");
+                }
+
+                // Highlight the active element
+                element.classList.add("highlight");
                 
                 // Scroll to the active element
-                element.scrollIntoView({ behavior: "smooth", block: "center" });
+                element.scrollIntoView({ behavior: "auto", block: "center" });
+            }
+        }
+        function treeSelect(element) {
+            if (element) {
+                var nested = element.parentElement.querySelector(".nested");
+                if (nested) {
+                    nested.classList.toggle("active");
+                    element.classList.toggle("caret-down");
+                }
+
+                // Remove highlight from any previously highlighted element
+                var previousHighlight = document.querySelector(".highlight");
+                if (previousHighlight) {
+                    previousHighlight.classList.remove("highlight");
+                }
+
+                // Highlight the active element
+                element.classList.add("highlight");
             }
         }
     </script>

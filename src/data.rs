@@ -21,7 +21,7 @@ impl<T> Node<T> {
     }
 
     fn make_path(path: &str, part: &str) -> String {
-        if path == "" {
+        if path.is_empty() {
             part.to_owned()
         } else {
             format!("{path}.{part}")
@@ -68,17 +68,6 @@ impl<T> Node<T> {
             }
         }
         false
-    }
-
-    /// Prints the whole tree starting from the current node
-    pub fn print(&self, level: usize, leaves: bool) {
-        println!("{:indent$}{}", "", self.name, indent = level * 2);
-        for child in self.children.values() {
-            if !leaves && child.children.is_empty() {
-                continue;
-            }
-            child.print(level + 1, leaves);
-        }
     }
 }
 

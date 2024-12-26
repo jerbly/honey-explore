@@ -21,6 +21,7 @@ use data::Node;
 use honeycomb_client::honeycomb::HoneyComb;
 use rust_embed::RustEmbed;
 use semconv::{Attribute, Examples, PrimitiveType, SemanticConventions, Type::Simple};
+use serde_json::json;
 
 #[derive(Template)]
 #[template(path = "index.html")]
@@ -162,8 +163,6 @@ async fn main() -> anyhow::Result<()> {
     for k in keys {
         root.add_node(k, Some(sc.attribute_map[k].clone()));
     }
-    // print the tree
-    root.print(0, false);
 
     let state = AppState { db: root, hc };
 
@@ -183,7 +182,12 @@ async fn main() -> anyhow::Result<()> {
 
     // run it
     let listener = tokio::net::TcpListener::bind(args.addr).await?;
-    println!("listening on {}", listener.local_addr()?);
+    let local_addr = listener.local_addr()?;
+    println!("listening on {}", local_addr);
+    // open a browser
+    if let Err(e) = open::that(format!("http://{}", local_addr)) {
+        eprintln!("Failed to open browser: {}", e);
+    }
     axum::serve(listener, app).await?;
     Ok(())
 }
@@ -276,6 +280,10 @@ async fn honeycomb_exists_handler(
     State(state): State<AppState>,
     Path((dataset, column, suffix)): Path<(String, String, String)>,
 ) -> Response {
+    fn trigger(url: String) -> Response {
+        ([("HX-Trigger", json!({"openWindow":url}).to_string())], "").into_response()
+    }
+
     if let Some(hc) = &state.hc {
         if let Some(node) = state.db.get_node(&column) {
             if let Some(value) = node.value.as_ref() {
@@ -283,7 +291,7 @@ async fn honeycomb_exists_handler(
                     match column_type {
                         Simple(PrimitiveType::Int) | Simple(PrimitiveType::Double) => {
                             if let Ok(avg) = hc.get_avg_query_url(&dataset, &column).await {
-                                return ([("HX-Redirect", avg)], "").into_response();
+                                return trigger(avg);
                             }
                         }
                         Simple(PrimitiveType::TemplateOfInt)
@@ -292,7 +300,7 @@ async fn honeycomb_exists_handler(
                             if let Ok(avg) =
                                 hc.get_avg_query_url(&dataset, &column_with_suffix).await
                             {
-                                return ([("HX-Redirect", avg)], "").into_response();
+                                return trigger(avg);
                             }
                         }
                         Simple(PrimitiveType::TemplateOfString)
@@ -306,14 +314,14 @@ async fn honeycomb_exists_handler(
                                 .get_exists_query_url(&dataset, &column_with_suffix, false)
                                 .await
                             {
-                                return ([("HX-Redirect", exists)], "").into_response();
+                                return trigger(exists);
                             }
                         }
                         _ => {
                             if let Ok(exists) =
                                 hc.get_exists_query_url(&dataset, &column, false).await
                             {
-                                return ([("HX-Redirect", exists)], "").into_response();
+                                return trigger(exists);
                             }
                         }
                     };
