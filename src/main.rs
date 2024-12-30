@@ -161,7 +161,13 @@ async fn main() -> anyhow::Result<()> {
     let mut keys: Vec<_> = sc.attribute_map.keys().collect();
     keys.sort();
     for k in keys {
-        root.add_node(k, Some(sc.attribute_map[k].clone()));
+        let value = &sc.attribute_map[k];
+        let tag = value
+            .registry_name
+            .as_ref()
+            .map(|s| s.to_owned())
+            .unwrap_or("".to_owned());
+        root.add_node(k, &tag, Some(value.clone()));
     }
 
     let state = AppState { db: root, hc };

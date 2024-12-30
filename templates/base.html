@@ -10,7 +10,7 @@
     {% block head %}{% endblock %}
     <style>
         /* Override Simple.css defaults that affect our layout */
-        body {
+        body { 
             display: flex;
             padding: 0;
             margin: 0;
@@ -21,7 +21,6 @@
             background: var(--bg);
         }
 
-        /* Reset Simple.css container behavior */
         body > * {
             max-width: none;
             margin: 0;
@@ -81,32 +80,21 @@
             user-select: none;
         }
 
-        /* Override Simple.css article margins */
-        article {
-            margin: 0;
-            padding: 0;
-        }
-
-        /* Ensure proper spacing in content areas */
-        .sidebar article, .main-content article {
-            padding: 1rem;
-        }
-
         /* Remove default bullets */
         ul, #myUL {
-        list-style-type: none;
+            list-style-type: none;
         }
 
         /* Remove margins and padding from the parent ul */
         #myUL {
-        margin: 0;
-        padding: 0;
+            margin: 0;
+            padding: 0;
         }
 
         /* Style the caret/arrow */
         .caret {
-        cursor: pointer;
-        user-select: none; /* Prevent text selection */
+            cursor: pointer;
+            user-select: none; /* Prevent text selection */
         }
 
         /* Create the caret/arrow with a unicode, and style it */
@@ -140,17 +128,17 @@
 
         /* Rotate the caret/arrow icon when clicked on (using JavaScript) */
         .caret-down::before {
-        transform: rotate(90deg);
+            transform: rotate(90deg);
         }
 
         /* Hide the nested list */
         .nested {
-        display: none;
+            display: none;
         }
 
         /* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
         .active {
-        display: block;
+            display: block;
         }
 
         /* Highlight the active element */
@@ -160,10 +148,12 @@
         }
     </style>
     <script>
+        // Open links in a new tab. Respond to HX-Trigger event.
         document.addEventListener("openWindow", function(evt){
             window.open(evt.detail.value,'_blank');
         });
 
+        // Make the tree open from this element up to the root
         function treeActive(element_id) {
             var element = document.getElementById(element_id);
             if (element) {
@@ -201,6 +191,8 @@
                 element.scrollIntoView({ behavior: "auto", block: "center" });
             }
         }
+
+        // Toggle the nested list when the caret/arrow is clicked
         function treeSelect(element) {
             if (element) {
                 var nested = element.parentElement.querySelector(".nested");

@@ -7,9 +7,9 @@
         {% endfor %}
     </ul>
 {% else if self.has_grandchild() == false %}
-    <li><a id="{{ path }}" class="blob" onclick='treeSelect(this)' href="#" hx-get="/node/{{ path }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ name }}</a></li>
+    <li tags="{{ self.get_tags_string() }}"><a id="{{ path }}" class="blob" onclick='treeSelect(this)' href="#" hx-get="/node/{{ path }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ name }}</a> {{ self.get_tags_string() }}</li>
 {% else %}
-    <li><a id="{{ path }}" class="caret" onclick='treeSelect(this)' href="#" hx-get="/node/{{ path }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ name }}</a>
+    <li tags="{{ self.get_tags_string() }}"><a id="{{ path }}" class="caret" onclick='treeSelect(this)' href="#" hx-get="/node/{{ path }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ name }}</a> {{ self.get_tags_string() }}
         <ul class="nested">
             {% for c in children.values() %}
                 {% if !c.children.is_empty() %}

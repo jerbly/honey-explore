@@ -193,6 +193,7 @@ pub struct Attribute {
     pub examples: Option<Examples>,
     pub deprecated: Option<String>,
     pub used_by: Option<Vec<String>>,
+    pub registry_name: Option<String>,
     pub defined_in: Option<String>,
     pub template_suffixes: Option<BTreeMap<String, Vec<String>>>,
 }
@@ -238,24 +239,26 @@ impl SemanticConventions {
         let mut sc = SemanticConventions {
             attribute_map: HashMap::new(),
         };
-        for (nick_name, root_dir) in root_dirs {
+        for (registry_name, root_dir) in root_dirs {
             let yml = format!("{root_dir}/**/*.yml");
             let yaml = format!("{root_dir}/**/*.yaml");
             for entry in glob(yml.as_str())?.chain(glob(yaml.as_str())?) {
                 let entry = entry?;
                 // print the trailing part of the path after the root_dir
-                let defined_in = format!(
-                    "{}::{}",
-                    nick_name,
-                    &entry.strip_prefix(root_dir)?.to_str().unwrap_or("")
-                );
-                sc.read_file(entry, defined_in)?;
+                let defined_in = entry.strip_prefix(root_dir)?.to_str().unwrap_or("");
+
+                sc.read_file(&entry, registry_name, defined_in)?;
             }
         }
         Ok(sc)
     }
 
-    pub fn read_file(&mut self, path: PathBuf, defined_in: String) -> anyhow::Result<()> {
+    pub fn read_file(
+        &mut self,
+        path: &PathBuf,
+        registry_name: &str,
+        defined_in: &str,
+    ) -> anyhow::Result<()> {
         // println!("reading file: {:?}", path);
         let groups: Groups = serde_yaml::from_reader(&File::open(path)?)?;
         for group in groups.groups {
@@ -263,7 +266,8 @@ impl SemanticConventions {
                 for mut attribute in attributes {
                     let is_some = attribute.id.is_some();
                     if is_some {
-                        attribute.defined_in = Some(defined_in.clone());
+                        attribute.defined_in = Some(defined_in.to_owned());
+                        attribute.registry_name = Some(registry_name.to_owned());
                         self.attribute_map.insert(
                             match &group.prefix {
                                 Some(prefix) => {

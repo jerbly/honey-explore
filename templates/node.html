@@ -17,7 +17,7 @@
                 {% when Some with (_) %}
                 {% when None %}
                     <li>
-                    {{ level }}.<a href="#" onclick="treeActive('{{ attribute }}');" hx-get="/node/{{ attribute }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a>
+                    {{ level }}.<a href="#" onclick="treeActive('{{ attribute }}');" hx-get="/node/{{ attribute }}" hx-target="#list" hx-swap="outerHTML" hx-push-url="true">{{ node.name }}</a> {{ node.get_tags_string() }}
                     </li>
             {% endmatch %}
         {% endfor %}
@@ -33,6 +33,12 @@
                             <s>{{ level }}.<b>{{ node.name }}</b></s>
                         {% when None %}
                             <mark>{{ level }}.<b>{{ node.name }}</b>{% if val.is_template_type() %}.&lt;key&gt;{% endif %}</mark>
+                    {% endmatch %}
+
+                    {% match val.registry_name %}
+                        {% when Some with (registry_name) %}
+                            &nbsp;{{ registry_name }}&nbsp;
+                        {% when None %}
                     {% endmatch %}
 
                     {% match val.defined_in %}

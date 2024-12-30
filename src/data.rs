@@ -1,11 +1,12 @@
 use askama::Template;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Template, Clone)]
 #[template(path = "tree.html")]
 pub struct Node<T> {
     pub name: String,
     pub path: String,
+    pub tags: BTreeSet<String>,
     pub value: Option<T>,
     pub children: BTreeMap<String, Node<T>>,
 }
@@ -15,6 +16,7 @@ impl<T> Node<T> {
         Node {
             name,
             path,
+            tags: BTreeSet::new(),
             value,
             children: BTreeMap::new(),
         }
@@ -28,7 +30,7 @@ impl<T> Node<T> {
         }
     }
 
-    pub fn add_node(&mut self, name: &str, value: Option<T>) {
+    pub fn add_node(&mut self, name: &str, tag: &str, value: Option<T>) {
         let parts = name.split('.');
         let mut current_node = self;
 
@@ -42,6 +44,7 @@ impl<T> Node<T> {
                 current_node.children.insert(part.to_string(), new_node);
             }
             current_node = current_node.children.get_mut(part).unwrap();
+            current_node.tags.insert(tag.to_string());
         }
 
         current_node.value = value;
@@ -69,6 +72,14 @@ impl<T> Node<T> {
         }
         false
     }
+
+    pub fn get_tags(&self) -> Vec<String> {
+        self.tags.iter().cloned().collect()
+    }
+
+    pub fn get_tags_string(&self) -> String {
+        self.tags.iter().cloned().collect::<Vec<String>>().join(" ")
+    }
 }
 
 #[cfg(test)]
@@ -88,9 +99,9 @@ mod tests {
     fn test_get_node() {
         let mut root = Node::new("root".to_string(), "".to_owned(), None);
 
-        root.add_node("aws.s3.bucket", Some("abc".to_string()));
-        root.add_node("aws.s3.key", Some("xyz".to_string()));
-        root.add_node("aws.region", Some("us-east-1".to_string()));
+        root.add_node("aws.s3.bucket", "e", Some("abc".to_string()));
+        root.add_node("aws.s3.key", "e", Some("xyz".to_string()));
+        root.add_node("aws.region", "e", Some("us-east-1".to_string()));
 
         assert_eq!(
             root.get_node("aws.s3.bucket").unwrap().value,
@@ -111,9 +122,9 @@ mod tests {
     fn test_children_of_aws_s3() {
         let mut root = Node::new("root".to_string(), "".to_owned(), None);
 
-        root.add_node("aws.s3.bucket", Some("abc".to_string()));
-        root.add_node("aws.s3.key", Some("xyz".to_string()));
-        root.add_node("aws.region", Some("us-east-1".to_string()));
+        root.add_node("aws.s3.bucket", "e", Some("abc".to_string()));
+        root.add_node("aws.s3.key", "e", Some("xyz".to_string()));
+        root.add_node("aws.region", "e", Some("us-east-1".to_string()));
 
         let aws_s3 = root.get_node("aws.s3").unwrap();
         assert!(aws_s3.children.contains_key("bucket"));
