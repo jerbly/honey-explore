@@ -16,13 +16,13 @@ chrono = { version = "0.4.39", features = ["serde"] }
 clap = { version = "4.5.23", features = ["derive"] }
 dotenv = "0.15.0"
 futures = "0.3.31"
-glob = "0.3.1"
+glob = "0.3.2"
 honeycomb-client = { git = "https://github.com/jerbly/honeycomb-client", tag = "0.2.1" }
 mime_guess = "2.0.5"
 open = "5.3.1"
 openssl = { version = "0.10.68", features = ["vendored"] }
 rust-embed = { version = "8.5.0", features = ["mime_guess", "axum"] }
-serde = { version = "1.0.216", features = ["derive"] }
+serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.134"
 serde_yaml = "0.9.34+deprecated"
 tokio = { version = "1.42.0", features = ["full"] }
@@ -41,7 +41,13 @@ ci = "github"
 # The installers to generate for each app
 installers = ["shell", "powershell"]
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc",
+]
 # Which actions to run on pull requests
 pr-run-mode = "plan"
 # Path that installers should place binaries in

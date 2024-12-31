@@ -68,9 +68,9 @@ struct Args {
     /// Model paths
     ///
     /// Provide one or more paths to the root of semantic convention
-    /// model directories. The path should be prefixed with a nickname
-    /// followed by a double colon. For example:
-    ///    otel::/Users/jerbly/Documents/code/public/semantic-conventions/model
+    /// model directories. Each path must be prefixed with a single character
+    /// representing the registry followed by a double colon. For example:
+    ///    🔭::/otel/semantic-conventions/model
     #[arg(short, long, required = true, num_args(1..))]
     model: Vec<String>,
 
@@ -121,16 +121,24 @@ async fn main() -> anyhow::Result<()> {
     let mut root_dirs = vec![];
     for path in args.model {
         if !path.contains("::") {
-            anyhow::bail!("path must be prefixed with a nickname followed by a double colon");
+            anyhow::bail!(
+                "path must be prefixed with a registry character followed by a double colon"
+            );
         }
         let split = path.split("::").collect::<Vec<_>>();
-        let nickname = split[0];
+        let registry_name = split[0];
+        if registry_name.chars().count() > 1 {
+            anyhow::bail!(
+                "registry {} is invalid, it must be a single character",
+                registry_name
+            );
+        }
         let p = path::Path::new(&split[1]);
         if !p.is_dir() {
             anyhow::bail!("{} is not directory", path);
         }
         root_dirs.push((
-            nickname.to_owned(),
+            registry_name.to_owned(),
             p.canonicalize()?
                 .to_str()
                 .context("invalid path")?

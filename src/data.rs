@@ -73,10 +73,6 @@ impl<T> Node<T> {
         false
     }
 
-    pub fn get_tags(&self) -> Vec<String> {
-        self.tags.iter().cloned().collect()
-    }
-
     pub fn get_tags_string(&self) -> String {
         self.tags.iter().cloned().collect::<Vec<String>>().join(" ")
     }

@@ -1,3 +1,10 @@
+# 0.2.0
+
+- Added a namespace tree view sidebar.
+- Changed registry names (formally know as nicknames) to single character names (emoji encouraged). These are displayed in the tree view to easily tell which registries contain definitions down the tree path.
+- Honeycomb query pages are now opened in a new tab/window rather than a redirect for the current page. (The trade-off is that you may need to allow pop-ups for the site).
+- Updated cargo-dist to 0.27
+
 # 0.1.9
 
 - Enums are now displayed in two ways:
