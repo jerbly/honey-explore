@@ -154,7 +154,7 @@ async fn main() -> anyhow::Result<()> {
     {
         Ok(hclient) => hclient,
         Err(e) => {
-            eprintln!("Failed to get honeycomb client: {}", e);
+            eprintln!("Failed to get honeycomb client: {e}");
             None
         }
     };
@@ -197,10 +197,10 @@ async fn main() -> anyhow::Result<()> {
     // run it
     let listener = tokio::net::TcpListener::bind(args.addr).await?;
     let local_addr = listener.local_addr()?;
-    println!("listening on {}", local_addr);
+    println!("listening on {local_addr}");
     // open a browser
-    if let Err(e) = open::that(format!("http://{}", local_addr)) {
-        eprintln!("Failed to open browser: {}", e);
+    if let Err(e) = open::that(format!("http://{local_addr}")) {
+        eprintln!("Failed to open browser: {e}");
     }
     axum::serve(listener, app).await?;
     Ok(())
@@ -310,7 +310,7 @@ async fn honeycomb_exists_handler(
                         }
                         Simple(PrimitiveType::TemplateOfInt)
                         | Simple(PrimitiveType::TemplateOfDouble) => {
-                            let column_with_suffix = format!("{}.{}", column, suffix);
+                            let column_with_suffix = format!("{column}.{suffix}");
                             if let Ok(avg) =
                                 hc.get_avg_query_url(&dataset, &column_with_suffix).await
                             {
@@ -323,7 +323,7 @@ async fn honeycomb_exists_handler(
                         | Simple(PrimitiveType::TemplateOfArrayOfInt)
                         | Simple(PrimitiveType::TemplateOfArrayOfDouble)
                         | Simple(PrimitiveType::TemplateOfArrayOfBoolean) => {
-                            let column_with_suffix = format!("{}.{}", column, suffix);
+                            let column_with_suffix = format!("{column}.{suffix}");
                             if let Ok(exists) = hc
                                 .get_exists_query_url(&dataset, &column_with_suffix, false)
                                 .await
@@ -440,7 +440,7 @@ fn get_links(names: &Vec<String>) -> Vec<String> {
         if prev.is_empty() {
             prev = name.clone();
         } else {
-            prev = format!("{}.{}", prev, name);
+            prev = format!("{prev}.{name}");
         }
         links.push(prev.clone());
     }

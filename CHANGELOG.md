@@ -1,3 +1,7 @@
+# 0.2.1
+
+- Support for complex deprecated definition and any type.
+
 # 0.2.0
 
 - Added a namespace tree view sidebar.
@@ -29,10 +33,9 @@
 
 - Number type attributes now run an `avg` query when a dataset is clicked
 - Template type attributes:
-    - Now render with the `.<key>` suffix in the name
-    - The dictionary, discovered from Honeycomb, is displayed in a `keys` section with query links
+  - Now render with the `.<key>` suffix in the name
+  - The dictionary, discovered from Honeycomb, is displayed in a `keys` section with query links
 - Added a favicon
-
 
 # 0.1.5
 

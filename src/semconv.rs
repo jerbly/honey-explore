@@ -17,8 +17,8 @@ pub enum MemberValue {
 impl Display for MemberValue {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            MemberValue::StringType(s) => write!(f, "{}", s),
-            MemberValue::IntegerType(i) => write!(f, "{}", i),
+            MemberValue::StringType(s) => write!(f, "{s}"),
+            MemberValue::IntegerType(i) => write!(f, "{i}"),
         }
     }
 }
@@ -62,6 +62,7 @@ impl Display for ComplexType {
 #[derive(Debug, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum PrimitiveType {
+    Any,
     String,
     Int,
     Double,
@@ -83,6 +84,7 @@ pub enum PrimitiveType {
 impl Display for PrimitiveType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            PrimitiveType::Any => write!(f, "any"),
             PrimitiveType::String => write!(f, "string"),
             PrimitiveType::Int => write!(f, "int"),
             PrimitiveType::Double => write!(f, "double"),
@@ -110,6 +112,7 @@ where
     let s: serde_yaml::Value = serde::Deserialize::deserialize(deserializer)?;
     match s {
         serde_yaml::Value::String(s) => match s.as_str() {
+            "any" => Ok(PrimitiveType::Any),
             "string" => Ok(PrimitiveType::String),
             "int" => Ok(PrimitiveType::Int),
             "double" => Ok(PrimitiveType::Double),
@@ -143,8 +146,8 @@ pub enum Type {
 impl Display for Type {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Simple(s) => write!(f, "{}", s),
-            Type::Complex(c) => write!(f, "{}", c),
+            Type::Simple(s) => write!(f, "{s}"),
+            Type::Complex(c) => write!(f, "{c}"),
         }
     }
 }
@@ -156,6 +159,7 @@ pub enum ValueType {
     Bool(bool),
     Integer(i64),
     Float(f64),
+    Any(String),
     ArrayString(Vec<String>),
     ArrayBool(Vec<bool>),
     ArrayInteger(Vec<i64>),
@@ -165,14 +169,15 @@ pub enum ValueType {
 impl Display for ValueType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ValueType::String(s) => write!(f, "{}", s),
-            ValueType::Bool(b) => write!(f, "{}", b),
-            ValueType::Integer(i) => write!(f, "{}", i),
-            ValueType::Float(fl) => write!(f, "{}", fl),
-            ValueType::ArrayString(s) => write!(f, "{:?}", s),
-            ValueType::ArrayBool(b) => write!(f, "{:?}", b),
-            ValueType::ArrayInteger(i) => write!(f, "{:?}", i),
-            ValueType::ArrayFloat(fl) => write!(f, "{:?}", fl),
+            ValueType::String(s) => write!(f, "{s}"),
+            ValueType::Bool(b) => write!(f, "{b}"),
+            ValueType::Integer(i) => write!(f, "{i}"),
+            ValueType::Float(fl) => write!(f, "{fl}"),
+            ValueType::Any(s) => write!(f, "{s}"),
+            ValueType::ArrayString(s) => write!(f, "{s:?}"),
+            ValueType::ArrayBool(b) => write!(f, "{b:?}"),
+            ValueType::ArrayInteger(i) => write!(f, "{i:?}"),
+            ValueType::ArrayFloat(fl) => write!(f, "{fl:?}"),
         }
     }
 }
@@ -191,11 +196,28 @@ pub struct Attribute {
     pub brief: Option<String>,
     pub note: Option<String>,
     pub examples: Option<Examples>,
-    pub deprecated: Option<String>,
+    pub deprecated: Option<Deprecated>,
     pub used_by: Option<Vec<String>>,
     pub registry_name: Option<String>,
     pub defined_in: Option<String>,
     pub template_suffixes: Option<BTreeMap<String, Vec<String>>>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Deprecated {
+    pub reason: String,
+}
+
+impl Display for Deprecated {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Deprecated: {}", self.reason)
+    }
+}
+
+impl AsRef<str> for Deprecated {
+    fn as_ref(&self) -> &str {
+        &self.reason
+    }
 }
 
 impl Attribute {
@@ -246,7 +268,10 @@ impl SemanticConventions {
                 let entry = entry?;
                 // print the trailing part of the path after the root_dir
                 let defined_in = entry.strip_prefix(root_dir)?.to_str().unwrap_or("");
-
+                // ignore registry_manifest files
+                if defined_in.contains("registry_manifest") {
+                    continue;
+                }
                 sc.read_file(&entry, registry_name, defined_in)?;
             }
         }
@@ -259,7 +284,7 @@ impl SemanticConventions {
         registry_name: &str,
         defined_in: &str,
     ) -> anyhow::Result<()> {
-        // println!("reading file: {:?}", path);
+        //println!("reading file: {:?}", path);
         let groups: Groups = serde_yaml::from_reader(&File::open(path)?)?;
         for group in groups.groups {
             if let Some(attributes) = group.attributes {
